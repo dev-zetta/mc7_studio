@@ -1,0 +1,75 @@
+{
+  "schema": "mc7-studio.corresponding-sources.v1",
+  "sources": [
+    {
+      "component": "PySide6 and Shiboken6",
+      "filename": "pyside-setup-everywhere-src-6.11.2.tar.xz",
+      "sha256": "cba47efbaad1bedd529725cbc14e21f156c7a19366f07b3edfbb076ffd7afdf8",
+      "url": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.2-src/pyside-setup-everywhere-src-6.11.2.tar.xz",
+      "version": "6.11.2"
+    },
+    {
+      "component": "Qt Base",
+      "filename": "qtbase-everywhere-src-6.11.2.tar.xz",
+      "sha256": "5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22",
+      "url": "https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtbase-everywhere-src-6.11.2.tar.xz",
+      "version": "6.11.2"
+    },
+    {
+      "component": "Qt SVG",
+      "filename": "qtsvg-everywhere-src-6.11.2.tar.xz",
+      "sha256": "d594337feca84c26fb67fe87b85e6a5c12fda404b611d905f9d138210c311876",
+      "url": "https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtsvg-everywhere-src-6.11.2.tar.xz",
+      "version": "6.11.2"
+    },
+    {
+      "component": "Qt Wayland",
+      "filename": "qtwayland-everywhere-src-6.11.2.tar.xz",
+      "sha256": "8eb7615e39332a10f506e8dd70f02d5954bb5949ff54f6dcbf8bd6168222f9df",
+      "url": "https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtwayland-everywhere-src-6.11.2.tar.xz",
+      "version": "6.11.2"
+    },
+    {
+      "component": "PyInstaller",
+      "filename": "pyinstaller-6.22.3.tar.gz",
+      "sha256": "05eb2f5615503e72939a7224d68b4aff572c6b0438ee4a17d0a4b481f399362d",
+      "url": "https://files.pythonhosted.org/packages/source/p/pyinstaller/pyinstaller-6.22.3.tar.gz",
+      "version": "6.22.3"
+    },
+    {
+      "component": "hidapi",
+      "filename": "hidapi-0.15.0.tar.gz",
+      "sha256": "ecbc265cbe8b7b88755f421e0ba25f084091ec550c2b90ff9e8ddd4fcd540311",
+      "url": "https://files.pythonhosted.org/packages/source/h/hidapi/hidapi-0.15.0.tar.gz",
+      "version": "0.15.0"
+    },
+    {
+      "component": "7-Zip",
+      "filename": "7z2603-src.tar.xz",
+      "sha256": "9cbde5099c6deb73691b0579063da5827522ccbbcba3f0020fd04e8c8c16c0d4",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.03/7z2603-src.tar.xz",
+      "version": "26.03"
+    },
+    {
+      "component": "AppImage type-2 runtime",
+      "filename": "type2-runtime-20251108.tar.gz",
+      "sha256": "4c4f6df4647c9f01f871d7edd3716d8aeeffda9d22ffbebe3fccd95a6ab52c95",
+      "url": "https://github.com/AppImage/type2-runtime/archive/refs/tags/20251108.tar.gz",
+      "version": "20251108"
+    },
+    {
+      "component": "libfuse used by the AppImage runtime",
+      "filename": "fuse-3.15.0.tar.xz",
+      "sha256": "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0",
+      "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz",
+      "version": "3.15.0"
+    },
+    {
+      "component": "squashfuse used by the AppImage runtime",
+      "filename": "squashfuse-0.5.2.tar.gz",
+      "sha256": "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3",
+      "url": "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz",
+      "version": "0.5.2"
+    }
+  ]
+}

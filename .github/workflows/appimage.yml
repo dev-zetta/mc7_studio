@@ -1,0 +1,61 @@
+name: AppImage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and smoke-test x86_64 AppImage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build in the pinned Ubuntu 22.04 image
+        env:
+          UPDATE_INFORMATION: gh-releases-zsync|${{ github.repository_owner }}|${{ github.event.repository.name }}|latest|MC7-Studio-*-x86_64.AppImage.zsync
+          BUILD_RELEASE: ${{ inputs.release || false }}
+        run: |
+          if [ "$BUILD_RELEASE" = true ]; then
+            scripts/build_appimage_docker.sh --build-release --require-tag
+          else
+            scripts/build_appimage_docker.sh
+          fi
+      - name: Install host graphics libraries for the startup check
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libegl1 libgl1
+      - name: Smoke-test graphical startup without a display
+        run: |
+          mkdir -p tmp/appimage-smoke
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen TMPDIR="$PWD/tmp/appimage-smoke" timeout 10s dist/appimage/MC7-Studio-*-x86_64.AppImage
+          status=$?
+          set -e
+          test "$status" -eq 124
+      - name: Smoke-test on current Fedora and Arch Linux
+        run: |
+          mkdir -p tmp/appimage-fedora tmp/appimage-arch
+          docker run --rm -e APPIMAGE_EXTRACT_AND_RUN=1 -e QT_QPA_PLATFORM=offscreen -e TMPDIR=/work/tmp -v "$PWD/dist/appimage:/artifacts:ro" -v "$PWD/tmp/appimage-fedora:/work/tmp" fedora:latest sh -ec 'dnf install -y libglvnd-egl libglvnd-glx; set -- /artifacts/MC7-Studio-*-x86_64.AppImage; test "$#" -eq 1; "$1" --swarm2-appimage-self-test; "$1" --version'
+          docker run --rm -e APPIMAGE_EXTRACT_AND_RUN=1 -e QT_QPA_PLATFORM=offscreen -e TMPDIR=/work/tmp -v "$PWD/dist/appimage:/artifacts:ro" -v "$PWD/tmp/appimage-arch:/work/tmp" archlinux:latest sh -ec 'pacman -Syu --noconfirm --needed libglvnd; set -- /artifacts/MC7-Studio-*-x86_64.AppImage; test "$#" -eq 1; "$1" --swarm2-appimage-self-test; "$1" --version'
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: MC7-Studio-AppImage-x86_64
+          path: |
+            dist/appimage/*
+            dist/release/*
+            dist/sources/*
+          if-no-files-found: error

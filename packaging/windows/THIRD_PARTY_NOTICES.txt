@@ -1,0 +1,9 @@
+MC7 Studio portable Windows application third-party notices
+
+This package bundles Python, PyInstaller, PySide6, Qt, Shiboken6, hidapi, psutil, websocket-client, certifi and 7-Zip. Copyrights and licenses remain with their respective authors. BUNDLED-COMPONENTS.json records the bundled versions. License and notice files are included in the licenses directory.
+
+The executable uses the PyInstaller bootloader and runtime hooks under the terms and Bootloader Exception included with the PyInstaller license files. Qt, PySide6 and Shiboken6 are distributed under their applicable LGPL/GPL and Qt for Python terms included with this package. The public source archive contains the packaging specification, pinned build requirements and application source needed to rebuild MC7 Studio.
+
+MC7 Studio is independent software. Turtle Beach firmware is not included in this package.
+
+The matching Qt Base, Qt SVG, PySide6/Shiboken6, HIDAPI, PyInstaller and 7-Zip sources accompany the release in MC7-Studio-0.1.0-corresponding-sources.tar.gz. The graphical executable uses a separate console helper for device operations; keep MC7-Studio-CLI.exe alongside MC7-Studio.exe.

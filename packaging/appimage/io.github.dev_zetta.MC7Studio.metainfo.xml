@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.dev_zetta.MC7Studio</id>
+  <name>MC7 Studio</name>
+  <summary>Configure the Turtle Beach Command Series MC7 mouse</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>MC7 Studio is an independent desktop configurator for the Turtle Beach Command Series MC7 mouse on Linux, macOS and Windows.</p>
+    <p>It manages onboard profiles, sensitivity, buttons, macros, lighting, the LCD, host integrations, settings backups and official firmware updates.</p>
+  </description>
+  <launchable type="desktop-id">mc7-studio.desktop</launchable>
+  <url type="homepage">https://github.com/dev-zetta/swarm2-mc7</url>
+  <provides>
+    <binary>mc7-studio</binary>
+  </provides>
+  <categories>
+    <category>Settings</category>
+    <category>HardwareSettings</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-09-18"/>
+  </releases>
+</component>

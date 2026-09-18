@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swarm2-mc7"
+version = "0.1.0"
+description = "Native MC7 desktop configurator and HID protocol tools for Linux, macOS and Windows"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+usb = ["hidapi>=0.15,<1"]
+gui = ["PySide6>=6.8,<7", "hidapi>=0.15,<1", "psutil>=5.9.6,<8", "websocket-client>=1.8,<2"]
+
+[project.scripts]
+swarm2 = "swarm2.cli:main"
+swarm2-gui = "swarm2.gui:main"
+swarm2-gnome-extension = "swarm2.gnome_extension:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+swarm2 = ["data/gnome-shell/*/*.js", "data/gnome-shell/*/*.json", "data/udev/*.rules"]

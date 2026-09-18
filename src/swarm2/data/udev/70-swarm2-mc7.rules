@@ -1,0 +1,6 @@
+# Allow the active local desktop user to access MC7 HID interfaces.
+# Install before 73-seat-late.rules, then reconnect the mouse and receiver.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="10f5", ATTRS{idProduct}=="502c", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="10f5", ATTRS{idProduct}=="502e", TAG+="uaccess"
+# Firmware control transfers require USB access to the directly wired mouse.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="10f5", ATTR{idProduct}=="502c", TAG+="uaccess"

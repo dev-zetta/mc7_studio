@@ -1,0 +1,23 @@
+# Vendor software, local reverse-engineering artifacts, and toolchains
+*.exe
+*.dll
+*.msi
+*.7z
+.tools/
+.research/
+.update/
+artifacts/
+/docs-local/
+/scripts-local/
+/tests-local/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+tmp/
+.pytest_cache/
+.DS_Store
+core
+core.*

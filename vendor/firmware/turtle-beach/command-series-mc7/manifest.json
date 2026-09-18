@@ -1,0 +1,147 @@
+{
+  "schema": "swarm2.vendor-firmware-bundle.v1",
+  "vendor": "Turtle Beach",
+  "product": "Command Series MC7",
+  "device_id": 454,
+  "catalog_date": "2026-09-16",
+  "provenance": {
+    "source": "Public Turtle Beach Swarm II resolver and CDN",
+    "archive_names": "Original CDN filenames",
+    "archive_bytes": "Byte-for-byte copies of the verified CDN responses"
+  },
+  "scope": {
+    "archive_count": 7,
+    "archive_bytes": 7645620,
+    "mouse_versions": [
+      "5.4.0.0",
+      "5.5.0.0",
+      "5.8.0.0",
+      "5.9.0.0"
+    ],
+    "transmitter_versions": [
+      "5.2.0.0",
+      "5.3.0.0",
+      "5.4.0.0"
+    ]
+  },
+  "releases": [
+    {
+      "key": "mouse:5.9.0.0",
+      "role": "mouse",
+      "usb_vid_pid": "10F5:502C",
+      "package_version": "5.9.0.0",
+      "firmware_version": 509,
+      "auto_reset_version": 506,
+      "resolver_file_id": 1258,
+      "filename": "command-series-mc7_454-5.9.0.0-8260-v1.7z",
+      "bytes": 1864401,
+      "md5": "0e636a3886bfd1d97f89fdc2e5a04184",
+      "sha256": "0f89ba9a62fbcf0484adc939b7ff23d3ad6a224500f54e1205e53a37c2b1cf00",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/2895/1258/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.9.0.0-8260-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "mouse:5.8.0.0",
+      "role": "mouse",
+      "usb_vid_pid": "10F5:502C",
+      "package_version": "5.8.0.0",
+      "firmware_version": 508,
+      "auto_reset_version": 506,
+      "resolver_file_id": 1250,
+      "filename": "command-series-mc7_454-5.8.0.0-2572-v1.7z",
+      "bytes": 1847660,
+      "md5": "a45d41a0a311feac93cc10054bf4eb83",
+      "sha256": "714ea09bc1b1860d8b8e3e12054e02c2f1e4a162b7396e5e41c905264a3984e3",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/1/1250/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.8.0.0-2572-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "mouse:5.5.0.0",
+      "role": "mouse",
+      "usb_vid_pid": "10F5:502C",
+      "package_version": "5.5.0.0",
+      "firmware_version": 505,
+      "auto_reset_version": 505,
+      "resolver_file_id": 1215,
+      "filename": "command-series-mc7_454-5.5.0.0-2645-v1.7z",
+      "bytes": 1837979,
+      "md5": "e4d5997040407b380c45612ba9414414",
+      "sha256": "b1f58b3063bb1634f77e51a0b92086c544dd1efcbaa5e1109ee81e00e70f283c",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/1/1215/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.5.0.0-2645-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "mouse:5.4.0.0",
+      "role": "mouse",
+      "usb_vid_pid": "10F5:502C",
+      "package_version": "5.4.0.0",
+      "firmware_version": 504,
+      "auto_reset_version": 504,
+      "resolver_file_id": 1198,
+      "filename": "command-series-mc7_454-5.4.0.0-0974-v1.7z",
+      "bytes": 1829502,
+      "md5": "9767a1a69f5d4c46936348ea93c0626c",
+      "sha256": "494a047a8414deef763e47f79ed0fb91a0359e91ecf690045d70be39d7749910",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/1/1198/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.4.0.0-0974-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "transmitter:5.4.0.0",
+      "role": "transmitter",
+      "usb_vid_pid": "10F5:502E",
+      "package_version": "5.4.0.0",
+      "firmware_version": 504,
+      "auto_reset_version": 504,
+      "resolver_file_id": 1259,
+      "filename": "command-series-mc7_454-5.4.0.0-4561-v1.7z",
+      "bytes": 88694,
+      "md5": "5e7b4167b1b54dcb26bcdc39ecc0fe8d",
+      "sha256": "3434bb800455bed281cd989132c02868d35f4f2ba36f296b3288037c22a2557f",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/2896/1259/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.4.0.0-4561-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "transmitter:5.3.0.0",
+      "role": "transmitter",
+      "usb_vid_pid": "10F5:502E",
+      "package_version": "5.3.0.0",
+      "firmware_version": 503,
+      "auto_reset_version": 503,
+      "resolver_file_id": 1216,
+      "filename": "command-series-mc7_454-5.3.0.0-7735-v1.7z",
+      "bytes": 88672,
+      "md5": "a778cb7b08f9330e9c79125a3b9572c0",
+      "sha256": "735859317c75f149beb1dfb17431b28bd5229e44a673eceaec8a46c3b71599ef",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/1/1216/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.3.0.0-7735-v1.7z",
+      "product_inspection_passed": true
+    },
+    {
+      "key": "transmitter:5.2.0.0",
+      "role": "transmitter",
+      "usb_vid_pid": "10F5:502E",
+      "package_version": "5.2.0.0",
+      "firmware_version": 502,
+      "auto_reset_version": 502,
+      "resolver_file_id": 1199,
+      "filename": "command-series-mc7_454-5.2.0.0-2290-v1.7z",
+      "bytes": 88712,
+      "md5": "cea2b55e1cfac409e084ead9b8b1a0da",
+      "sha256": "fc6f79d9d98ba5ae13568a44a6359fd42bc0ddebde59bfb011bcdf39a8351ea8",
+      "resolver_url": "https://acpr.prod.turtlebeach.com/swarm2/download/1/1199/firmware.7z",
+      "cdn_url": "https://cdn.turtlebeach.com/device/driver-firmware/command-series-mc7/command-series-mc7_454-5.2.0.0-2290-v1.7z",
+      "product_inspection_passed": true
+    }
+  ],
+  "limitations": {
+    "full_flash_backup": false,
+    "device_unique_state_included": false,
+    "hardware_installation_validated": false,
+    "meaning": "These are official update packages. They are not byte-for-byte flash images of a particular MC7 device."
+  }
+}

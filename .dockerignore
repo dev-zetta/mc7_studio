@@ -1,0 +1,16 @@
+.git
+.research
+.tools
+.update
+.venv
+artifacts
+build
+dist
+docs-local
+scripts-local
+tests-local
+tmp
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.7z

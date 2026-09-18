@@ -1,0 +1,28 @@
+include .dockerignore LICENSE README.md
+recursive-include docs *.md *.json *.png
+recursive-include packaging *
+include scripts/build_release.py
+include scripts/build_appimage.py
+include scripts/build_appimage_docker.sh
+include scripts/build_corresponding_sources.py
+include scripts/build_windows.py
+include scripts/build_macos.py
+include scripts/native_build.py
+include packaging/appimage/Dockerfile
+recursive-include src/swarm2/data/gnome-shell *.js *.json
+recursive-include src/swarm2/data/udev *.rules
+recursive-include tests *.py *.json
+include vendor/firmware/turtle-beach/command-series-mc7/README.md
+include vendor/firmware/turtle-beach/command-series-mc7/manifest.json
+include vendor/firmware/turtle-beach/command-series-mc7/SHA256SUMS
+include vendor/firmware/turtle-beach/command-series-mc7/verify.py
+prune docs-local
+prune scripts-local
+prune tests-local
+prune .research
+prune .tools
+prune .update
+prune artifacts
+prune tmp
+global-exclude *.7z *.exe *.dll *.msi
+global-exclude __pycache__ *.py[cod]

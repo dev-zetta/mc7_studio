@@ -1,0 +1,23 @@
+Qt, PySide6 and Shiboken6 notices and source provenance
+
+The AppImage contains dynamically linked Qt 6.11.2 libraries from the PySide6_Essentials 6.11.2 wheel, PySide6 6.11.2 bindings and Shiboken6 6.11.2. They are distributed under the open-source license choices declared by Qt and the official Qt for Python packages, including LGPL-3.0-only. The complete LGPL 3.0, GPL 2.0 and GPL 3.0 texts are installed as LGPL-3.0.txt, GPL-2.0.txt and GPL-3.0.txt beside this notice.
+
+The build deliberately excludes Qt Virtual Keyboard because Qt offers that module under GPL-3.0-only or a commercial license. It also excludes unused Qt PDF, QML and Quick libraries and all image format plugins except JPEG and SVG. The release gate fails if Qt Virtual Keyboard or Qt PDF returns to the bundle.
+
+Exact corresponding upstream sources for the retained wheel components are:
+
+PySide6 and Shiboken6 6.11.2: https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.2-src/pyside-setup-everywhere-src-6.11.2.tar.xz
+SHA-256: cba47efbaad1bedd529725cbc14e21f156c7a19366f07b3edfbb076ffd7afdf8
+
+Qt Base 6.11.2: https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtbase-everywhere-src-6.11.2.tar.xz
+SHA-256: 5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22
+
+Qt SVG 6.11.2: https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtsvg-everywhere-src-6.11.2.tar.xz
+SHA-256: d594337feca84c26fb67fe87b85e6a5c12fda404b611d905f9d138210c311876
+
+Qt Wayland 6.11.2: https://download.qt.io/archive/qt/6.11/6.11.2/submodules/qtwayland-everywhere-src-6.11.2.tar.xz
+SHA-256: 8eb7615e39332a10f506e8dd70f02d5954bb5949ff54f6dcbf8bd6168222f9df
+
+Qt's component-specific third-party copyright and license records are stored in the qt_attribution.json files in those exact source archives and published at https://doc.qt.io/qt-6/licenses-used-in-qt.html. Qt for Python's third-party notices are published at https://doc.qt.io/qtforpython-6/licenses.html, including its use of Python 3.7 signature support code under the Python Software Foundation License 2.0.
+
+The shared libraries can be replaced after extracting the AppImage with --appimage-extract. The public MC7 Studio build script can rebuild the AppDir and AppImage against a compatible modified Qt. A distributor of the AppImage must also make the exact corresponding source available under its control; the upstream URLs and hashes above establish provenance but do not replace that distribution obligation.

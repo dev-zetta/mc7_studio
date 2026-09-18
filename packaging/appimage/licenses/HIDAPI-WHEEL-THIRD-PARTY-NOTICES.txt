@@ -1,0 +1,48 @@
+Third-party native libraries in the hidapi 0.15.0 manylinux wheel
+
+The release manifest records the exact SHA-256 digest and installed wheel path of every library listed here. The upstream versions that can be established from the auditwheel filenames are included. The wheel does not carry an upstream version record for every library.
+
+libattr.so.1.1.0 contains libattr code from the attr project, Copyright 2000-2007 Silicon Graphics, Inc. and other contributors, under LGPL-2.1-or-later. Source: https://git.kernel.org/pub/scm/linux/kernel/git/jeffm/attr.git/
+
+libelf.so and libdw.so are from elfutils 0.176, Copyright 1996-2019 Red Hat, Inc. and other contributors. The libraries are available under LGPL-3.0-or-later or GPL-2.0-or-later. Source: https://sourceware.org/elfutils/ftp/0.176/
+
+libudev.so.1.6.2 is from systemd and is available under LGPL-2.1-or-later. Copyright includes Kay Sievers, Lennart Poettering and the systemd contributors. Source: https://github.com/systemd/systemd
+
+liblzma.so.5.2.2 is from XZ Utils 5.2.2. The liblzma code in that release was placed in the public domain. Source: https://tukaani.org/xz/
+
+libcap.so.2.22 is Copyright 1997-2011 Andrew G. Morgan and contributors and is available under the BSD 3-Clause license or GPL-2.0-only. Source: https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/
+
+libusb-1.0.so.0.1.0 is from libusb, Copyright 2001 Johannes Erdfelt, 2007-2009 Daniel Drake and other contributors, under LGPL-2.1-or-later. Source: https://github.com/libusb/libusb
+
+libbz2.so.1.0.6 is from bzip2/libbzip2 1.0.6. Source: https://sourceware.org/bzip2/
+
+This program, "bzip2", the associated library "libbzip2", and all documentation, are copyright (C) 1996-2010 Julian R Seward. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+
+3. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+
+4. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Julian Seward, jseward@bzip.org
+bzip2/libbzip2 version 1.0.6 of 6 September 2010
+
+BSD 3-Clause license used by libcap:
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES, INCLUDING PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, LOSS OF USE, DATA, OR PROFITS, OR BUSINESS INTERRUPTION, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT, INCLUDING NEGLIGENCE OR OTHERWISE, ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The complete LGPL 2.1, LGPL 3.0, GPL 2.0 and GPL 3.0 texts are installed beside this notice.

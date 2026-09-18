@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require a version tag
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+  tests:
+    needs: tag
+    uses: ./.github/workflows/ci.yml
+  appimage:
+    needs: tag
+    uses: ./.github/workflows/appimage.yml
+    with:
+      release: true
+  native:
+    needs: tag
+    uses: ./.github/workflows/native.yml
+  release:
+    name: Assemble verified draft release
+    needs: [tests, appimage, native]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          path: artifacts
+      - name: Create or update the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' assets < <(find artifacts -type f -print0)
+          test "${#assets[@]}" -gt 0
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft > draft.txt; then
+            test "$(cat draft.txt)" = true
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes --title "MC7 Studio $GITHUB_REF_NAME"
+          fi

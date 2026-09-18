@@ -1,0 +1,15 @@
+MC7 Studio AppImage third-party notices
+
+This AppImage bundles Python, PySide6, Qt, Shiboken6, hidapi, psutil, websocket-client, certifi, native libraries from the Ubuntu build environment, libusb and 7-Zip. Copyrights and licenses remain with their respective authors. BUNDLED-COMPONENTS.json maps every PyInstaller native file to its exact digest, source provenance, component version and notice file. Debian package copyright records are installed under the adjacent debian directory.
+
+The executable uses the PyInstaller 6.22.3 bootloader and runtime hooks under the terms and Bootloader Exception reproduced in the bundled PyInstaller COPYING file.
+
+Qt 6.11.2, PySide6 6.11.2 and Shiboken6 6.11.2 notices, exact source archive URLs and SHA-256 digests are in QT-PYSIDE-SHIBOKEN-NOTICE.txt. ICU 73.2 and its third-party notices are reproduced in ICU-73.2-LICENSE.txt. The AppImage can be extracted with --appimage-extract; its dynamically linked libraries can be replaced; and the public build script can rebuild it against compatible modified libraries. Qt Virtual Keyboard, Qt PDF, Qt QML and Qt Quick are excluded from this application.
+
+The AppImage type-2 runtime is release 20251108 under GPL-2.0-only. Its source is https://github.com/AppImage/type2-runtime/tree/20251108 and the bundled runtime SHA-256 is recorded in BUNDLED-COMPONENTS.json.
+
+7-Zip 26.03 is distributed under the licenses reproduced in 7-Zip-License.txt. Its source is https://github.com/ip7z/7zip/tree/26.03.
+
+The hidapi 0.15.0 package licenses are reproduced in the hidapi files beside this notice. The release builder compiles hidapi from its verified source distribution instead of using a manylinux wheel with opaque vendored native libraries.
+
+Official MC7 Studio releases accompany the AppImage with a corresponding-source archive. It contains the exact pinned upstream archives for Qt, PySide6, Shiboken6, PyInstaller, hidapi, 7-Zip, the AppImage runtime and the runtime's pinned libfuse and squashfuse inputs. It also contains the authenticated Ubuntu source packages corresponding to every Debian native library copied into that AppImage. SOURCES.json records the URL, source-package identity, size and SHA-256 digest of every retained source file.

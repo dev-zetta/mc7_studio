@@ -1,0 +1,7 @@
+{
+  "description": "Provides MC7 Studio with only the PID of the focused GNOME Wayland window.",
+  "name": "MC7 Studio Automatic Profiles",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "uuid": "automatic-profiles@swarm2-mc7.local",
+  "version": 1
+}

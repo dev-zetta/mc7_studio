@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MC7 Studio
+Comment=Configure the Turtle Beach Command Series MC7 mouse
+Exec=mc7-studio
+Icon=mc7-studio
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=mouse;gaming;HID;USB;firmware;LCD;
+StartupNotify=true

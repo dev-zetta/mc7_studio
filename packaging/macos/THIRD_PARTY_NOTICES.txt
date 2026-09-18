@@ -1,0 +1,7 @@
+MC7 Studio Apple Silicon application third-party notices
+
+This package bundles Python, PyInstaller, PySide6, Qt, Shiboken6, hidapi, psutil, websocket-client, certifi and 7-Zip. Copyrights and licenses remain with their respective authors. BUNDLED-COMPONENTS.json records the bundled versions; licenses are retained alongside this notice.
+
+PyInstaller's bootloader exception and the Qt, PySide6, Shiboken6 and 7-Zip LGPL/GPL terms are included in the licenses directory. The matching Qt Base, Qt SVG, PySide6/Shiboken6, HIDAPI, PyInstaller and 7-Zip sources accompany the release in MC7-Studio-0.1.0-corresponding-sources.tar.gz. The application source archive includes the packaging specifications and build scripts.
+
+The application uses ad-hoc code signing required by Apple Silicon. It is not Developer ID signed or notarized. MC7 Studio is independent software; Turtle Beach firmware is not included.

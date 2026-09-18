@@ -1,0 +1,3 @@
+* text=auto eol=lf
+vendor/firmware/turtle-beach/command-series-mc7/*.7z binary
+*.png binary
