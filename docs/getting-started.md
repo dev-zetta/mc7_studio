@@ -24,11 +24,11 @@ The AppImage does not need Python or a virtual environment. Installing a wheel o
 Download the AppImage and its `.sha256` file from the release. Verify the download, place the application where you intend to keep it, mark it executable and launch it:
 
 ```sh
-sha256sum -c MC7-Studio-0.2.0-x86_64.AppImage.sha256
+sha256sum -c MC7-Studio-0.2.1-x86_64.AppImage.sha256
 mkdir -p "$HOME/Applications"
-mv MC7-Studio-0.2.0-x86_64.AppImage "$HOME/Applications/"
-chmod +x "$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
-"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
+mv MC7-Studio-0.2.1-x86_64.AppImage "$HOME/Applications/"
+chmod +x "$HOME/Applications/MC7-Studio-0.2.1-x86_64.AppImage"
+"$HOME/Applications/MC7-Studio-0.2.1-x86_64.AppImage"
 ```
 
 Do not run the AppImage as root. It keeps presets and other user data in the normal per-user locations rather than inside the AppImage.
@@ -38,8 +38,8 @@ Do not run the AppImage as root. It keeps presets and other user data in the nor
 Download the Windows ZIP and adjacent checksum from the release. Verify the SHA-256 value with `Get-FileHash`, extract the entire archive, and launch `MC7-Studio.exe`:
 
 ```powershell
-Get-FileHash .\MC7-Studio-0.2.0-windows-x86_64.zip -Algorithm SHA256
-Expand-Archive .\MC7-Studio-0.2.0-windows-x86_64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
+Get-FileHash .\MC7-Studio-0.2.1-windows-x86_64.zip -Algorithm SHA256
+Expand-Archive .\MC7-Studio-0.2.1-windows-x86_64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
 & "$env:LOCALAPPDATA\Programs\MC7-Studio\MC7-Studio.exe"
 ```
 
@@ -47,10 +47,10 @@ Close Swarm II before using MC7 Studio. No udev rule or separate USB driver is r
 
 ### macOS Apple Silicon application
 
-Download `MC7-Studio-0.2.0-macos-arm64.zip` and its checksum from [GitHub Releases](https://github.com/dev-zetta/mc7_studio/releases/latest). Verify the archive before opening it:
+Download `MC7-Studio-0.2.1-macos-arm64.zip` and its checksum from [GitHub Releases](https://github.com/dev-zetta/mc7_studio/releases/latest). Verify the archive before opening it:
 
 ```sh
-shasum -a 256 -c MC7-Studio-0.2.0-macos-arm64.zip.sha256
+shasum -a 256 -c MC7-Studio-0.2.1-macos-arm64.zip.sha256
 ```
 
 Extract the archive in Finder and move **MC7 Studio.app** to **Applications**. Open it there, connect one MC7 directly by USB, and choose **Refresh devices**. The bundle includes its Python runtime, Qt, HIDAPI and 7-Zip; Homebrew is not needed.
@@ -63,7 +63,7 @@ Download the wheel from the release and replace the example path below with its 
 
 ```sh
 python3 -m venv mc7-studio
-mc7-studio/bin/python -m pip install '/path/to/swarm2_mc7-0.2.0-py3-none-any.whl[gui]'
+mc7-studio/bin/python -m pip install '/path/to/swarm2_mc7-0.2.1-py3-none-any.whl[gui]'
 mc7-studio/bin/swarm2-gui
 ```
 
@@ -76,8 +76,8 @@ Apple Silicon Mac and Windows users should normally use their platform's portabl
 The source archive contains the same application and is useful when a wheel cannot be installed directly:
 
 ```sh
-tar -xzf swarm2_mc7-0.2.0.tar.gz
-cd swarm2_mc7-0.2.0
+tar -xzf swarm2_mc7-0.2.1.tar.gz
+cd swarm2_mc7-0.2.1
 python3 -m venv .venv
 .venv/bin/python -m pip install '.[gui]'
 .venv/bin/swarm2-gui
@@ -105,7 +105,7 @@ If the in-app installer is unavailable, see the manual procedure in [Troubleshoo
 Run the read-only diagnostic with the same AppImage used to open the application:
 
 ```sh
-"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage" doctor
+"$HOME/Applications/MC7-Studio-0.2.1-x86_64.AppImage" doctor
 ```
 
 For a wheel installation, run it from the same virtual environment:

@@ -1,11 +1,12 @@
 """Isolated, bounded DCU calibration helper with explicit commit/cancel input.
 
-First JSON line: {"command":"start", "device_id":..., "timeout_seconds":90}.
+First JSON line: {"command":"start", "device_id":..., "timeout_seconds":300}.
 Subsequent lines: {"command":"commit"} or {"command":"cancel"}.
 Output lines describe progress and one terminal result. No helper is started
 by opening the GUI dialog. All HID handles live only in this process.
 """
 
+from contextlib import nullcontext
 import json
 import os
 import platform
@@ -15,11 +16,14 @@ import sys
 import threading
 import time
 
-from .dcu_commands import DcuCalibrationSession, DcuPhase
+from .dcu_commands import DEFAULT_TIMEOUT_SECONDS, DcuCalibrationSession, DcuPhase, decode_completion_event
+from .display_commands import build_application_report, decode_profile_response
 from .hardware import read_sensor
+from .protocol import ProtocolError
+from .settings import read_raw
 from .transport import DeviceError, HidrawTransport
 
-HARD_TIMEOUT_SECONDS = 120
+HARD_TIMEOUT_SECONDS = DEFAULT_TIMEOUT_SECONDS + 30
 TERMINAL_PHASES = {DcuPhase.COMMITTED, DcuPhase.CANCELLED, DcuPhase.UNCERTAIN}
 
 
@@ -28,11 +32,43 @@ class CalibrationTransport:
 
     def __init__(self, transport):
         self.transport = transport
+        self._pending_completion = None
+
+    def _preserve_completion(self, event):
+        try:
+            completion = decode_completion_event(event)
+        except ProtocolError:
+            return
+        # One completion suffices; never accumulate unrelated input reports.
+        if self._pending_completion is None:
+            self._pending_completion = completion.raw
+
+    def command_session(self):
+        session = getattr(self.transport, "configuration_session", None)
+        if session is None:
+            return nullcontext()
+        return session(on_event=self._preserve_completion)
 
     def read_profiles(self):
-        return [read_sensor(self.transport, index).raw for index in range(5)]
+        with self.command_session():
+            return [read_sensor(self.transport, index).raw for index in range(5)]
+
+    def prepare_calibration(self):
+        # Firmware gates D1 (and other unsolicited notifications) behind the
+        # application-active flag. Reconnection can clear it independently
+        # of the stored profile settings. Preserve the active slot and power.
+        with self.command_session():
+            before = decode_profile_response(read_raw(self.transport, "profile", 0))
+            self.transport.send(build_application_report(before, True))
+            after = decode_profile_response(read_raw(self.transport, "profile", 0))
+            if (after.current_profile, after.profile_count, after.energy_saving) != (
+                    before.current_profile, before.profile_count, before.energy_saving):
+                raise DeviceError("Mouse profile changed while enabling calibration notifications; read it again")
 
     def read_event(self, timeout):
+        if self._pending_completion is not None:
+            event, self._pending_completion = self._pending_completion, None
+            return event
         if isinstance(self.transport.events, int):
             if not select.select([self.transport.events], [], [], timeout)[0]:
                 return b""
@@ -64,7 +100,7 @@ class CalibrationTransport:
 class DcuRuntime:
     """One lock-owning helper session; injectable transport/clock for tests."""
 
-    def __init__(self, transport, emit, *, timeout_seconds=90, clock=time.monotonic):
+    def __init__(self, transport, emit, *, timeout_seconds=DEFAULT_TIMEOUT_SECONDS, clock=time.monotonic):
         self.transport, self.emit, self.clock = transport, emit, clock
         self.timeout_seconds = timeout_seconds
         self.session = None
@@ -81,30 +117,32 @@ class DcuRuntime:
             self.emit(payload)
             self._last_phase = phase
 
-    def _send(self, report):
+    def _send(self, report, *, reporting_paused=False):
         # Drain before each distinct command, never after writing Start: D1
         # may arrive before the start ACK and must be retained in that case.
-        self.transport.drain()
-        self.device_may_have_changed = True
-        self.transport.write(report)
-        deadline = self.clock() + 2
-        while self.clock() < deadline:
-            event = self.transport.read_event(min(0.05, max(0, deadline - self.clock())))
-            if not event:
-                continue
-            self.session.observe_completion(event, now=self.clock())
-            if len(event) != 8 or event[0] != 0x10 or event[2:4] != b"\xf2\x19":
-                continue
-            if self.session.acknowledge(event):
-                self._progress()
-                return
-        raise DeviceError("DCU command acknowledgement timed out")
+        with (nullcontext() if reporting_paused else self.transport.command_session()):
+            self.transport.drain()
+            self.device_may_have_changed = True
+            self.transport.write(report)
+            deadline = self.clock() + 2
+            while self.clock() < deadline:
+                event = self.transport.read_event(min(0.05, max(0, deadline - self.clock())))
+                if not event:
+                    continue
+                self.session.observe_completion(event, now=self.clock())
+                if len(event) != 8 or event[0] != 0x10 or event[2:4] != b"\xf2\x19":
+                    continue
+                if self.session.acknowledge(event):
+                    self._progress()
+                    return
+            raise DeviceError("DCU command acknowledgement timed out")
 
     def start(self):
         if self.session is not None or self.outcome is not None:
             raise DeviceError("DCU calibration cannot be restarted in this helper")
         self.emit({"type": "progress", "phase": "reading_baseline"})
         self.session = DcuCalibrationSession(self.transport.read_profiles(), timeout_seconds=self.timeout_seconds)
+        self.transport.prepare_calibration()
         self._send(self.session.start(now=self.clock()))
 
     def tick(self):
@@ -121,8 +159,12 @@ class DcuRuntime:
     def commit(self):
         if self.outcome is not None:
             raise DeviceError("Calibration has already finished")
-        self._send(self.session.begin_commit(now=self.clock()))
-        self._send(self.session.commit())
+        reset = self.session.begin_commit(now=self.clock())
+        # Vendor FUN_180245360 wraps the entire 93/92 sequence in one
+        # reporting pause. Resuming between them can interrupt wireless Save.
+        with self.transport.command_session():
+            self._send(reset, reporting_paused=True)
+            self._send(self.session.commit(), reporting_paused=True)
         self.session.verify(self.transport.read_profiles())
         self._finish("committed", verified=True)
 
@@ -212,9 +254,9 @@ def main():
         device_id = initial.get("device_id")
         if not isinstance(device_id, str) or not device_id or len(device_id) > 1024:
             raise DeviceError("A valid mouse connection is required")
-        timeout = initial.get("timeout_seconds", 90)
-        if type(timeout) not in (float, int) or not 5 <= timeout <= 90:
-            raise DeviceError("Helper calibration timeout must be 5..90 seconds")
+        timeout = initial.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)
+        if type(timeout) not in (float, int) or not 5 <= timeout <= DEFAULT_TIMEOUT_SECONDS:
+            raise DeviceError(f"Helper calibration timeout must be 5..{DEFAULT_TIMEOUT_SECONDS} seconds")
         with _transport_factory(device_id) as transport:
             runtime = DcuRuntime(CalibrationTransport(transport), emit, timeout_seconds=timeout)
             try:

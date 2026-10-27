@@ -286,6 +286,25 @@ class CountdownRequestTests(unittest.TestCase):
 
 class RawTransportMethodTests(unittest.TestCase):
     @unittest.skipIf(sys.platform == "win32", "Exercises POSIX ioctl APIs")
+    def test_wireless_listener_skips_cached_profile_and_page_without_replaying_read(self):
+        from swarm2.screen_key_commands import build_screen_key_read_request
+        from tests.test_settings import screen_key_page
+        raw = HidrawTransport("fixture")
+        raw.wireless, raw.events, raw.control = True, 11, 12
+        transport = CountdownEventTransport(raw)
+        report = build_screen_key_read_request(0, 2)
+        current = screen_key_page(0, 2)
+        replies = [screen_key_page(1, 2), screen_key_page(0, 1), current]
+        with patch.object(raw, "read_event", side_effect=[b"", OLD_ACK]), \
+             patch("fcntl.ioctl", return_value=64) as write, \
+             patch.object(raw, "_get_feature_now", side_effect=[r + bytes(10) for r in replies]) as get, \
+             patch("swarm2.transport.time.sleep"):
+            transport.send(report)
+            self.assertEqual(transport.get_feature(0x29), current)
+        write.assert_called_once()
+        self.assertEqual(get.call_count, 3)
+
+    @unittest.skipIf(sys.platform == "win32", "Exercises POSIX ioctl APIs")
     def test_linux_raw_event_read_and_feature_write_are_bounded(self):
         transport = HidrawTransport("fixture")
         transport.events, transport.control = 11, 12

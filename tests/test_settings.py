@@ -5,6 +5,7 @@ depend on private research artifacts or access a physical mouse.
 """
 
 import copy
+from contextlib import contextmanager
 import unittest
 from unittest.mock import patch
 
@@ -173,6 +174,12 @@ class SettingsTransport:
             raw = bytearray(self.records[name])
             raw[3] = packet[2] & 0x7F
             raw[4] = packet[3]
+        elif command == 0x10:
+            name = "sensor"
+            raw = bytearray(self.records[name])
+            raw[3] = packet[2]
+            raw[4] = raw[5] = packet[3] & 0x0F
+            raw[46] = (packet[3] >> 4) & 1
         else:
             raise AssertionError(f"This test has not modeled command {command:#x}")
         self.records[name] = with_checksum(raw)
@@ -201,6 +208,37 @@ class ReceiverSettingsTransport(SettingsTransport):
     def get_feature(self, selector):
         raw = super().get_feature(selector)
         return raw[:12] if selector == 0x2A else raw
+
+
+class RateSensitiveReceiverTransport(ReceiverSettingsTransport):
+    """An active 8 kHz write restores reporting before the next settings read."""
+
+    def __init__(self):
+        super().__init__()
+        self.quiet = False
+        self.pauses = self.resumes = self.readback_pauses = 0
+
+    @contextmanager
+    def configuration_session(self):
+        self.quiet = True
+        self.pauses += 1
+        try:
+            yield
+        finally:
+            self.quiet = False
+            self.resumes += 1
+
+    def send(self, packet):
+        if packet[1] == 0x1C and not self.quiet:
+            raise DeviceError('Receiver configuration requires a reporting downshift')
+        super().send(packet)
+        if (packet[1] == 0x10 and packet[2] == self.records['profile'][3]
+                and packet[3] & 0x0F == 3):
+            self.quiet = False
+
+    def prepare_settings_readback(self):
+        self.quiet = True
+        self.readback_pauses += 1
 
 
 class SettingsIntegrationTests(unittest.TestCase):
@@ -279,7 +317,7 @@ class SettingsIntegrationTests(unittest.TestCase):
         self.assertEqual(self.transport.writes, [])
 
     def test_wireless_conflicting_power_modes_block_every_setting_write(self):
-        self.transport = ReceiverSettingsTransport()
+        self.transport = RateSensitiveReceiverTransport()
         snapshot = self.read()
         config = snapshot['configuration']
         config.power.eco_mode = config.power.energy_saving = True
@@ -289,6 +327,38 @@ class SettingsIntegrationTests(unittest.TestCase):
             self.service.apply_section('fixture-mc7', config, 'power', snapshot['baseline'])
         self.assertEqual(self.transport.writes, [])
         self.assertEqual(self.transport.sent, [])
+        self.assertEqual((self.transport.pauses, self.transport.resumes), (1, 1))
+
+    def test_wireless_active_8khz_write_downshifts_again_before_readback(self):
+        self.transport = RateSensitiveReceiverTransport()
+        snapshot = self.read()
+        snapshot['configuration'].sensor.polling_rate = 8000
+        result = self.service.apply_section('fixture-mc7', snapshot['configuration'], 'sensor', snapshot['baseline'])
+        self.assertEqual(result['configuration'].sensor.polling_rate, 8000)
+        self.assertEqual(self.transport.readback_pauses, 1)
+        self.assertEqual(sum(p[1] == 0x10 for p in self.transport.writes), 1)
+        self.assertEqual(self.transport.pauses, self.transport.resumes)
+        self.assertFalse(self.transport.quiet)
+
+    def test_wireless_8khz_change_requires_active_profile_read_before_writes(self):
+        self.transport = ReceiverSettingsTransport()
+        snapshot = self.read()
+        snapshot['configuration'].sensor.polling_rate = 8000
+        self.transport.read_errors['profile'] = 'Profile read failed'
+        with self.assertRaisesRegex(DeviceError, 'Read the active profile successfully'):
+            self.service.apply_section('fixture-mc7', snapshot['configuration'], 'sensor', snapshot['baseline'])
+        self.assertEqual(self.transport.writes, [])
+
+    def test_wireless_status_uses_configuration_context_and_resumes_on_failure(self):
+        self.transport = RateSensitiveReceiverTransport()
+        status = self.service.read_status('fixture-mc7')
+        self.assertEqual(status['firmware_version'], '5.09')
+        self.assertEqual((self.transport.pauses, self.transport.resumes), (1, 1))
+        self.transport.read_errors['status'] = 'Status read failed'
+        with self.assertRaisesRegex(DeviceError, 'Status read failed'):
+            self.service.read_status('fixture-mc7')
+        self.assertEqual((self.transport.pauses, self.transport.resumes), (2, 2))
+        self.assertFalse(self.transport.quiet)
 
     def test_full_read_maps_actual_records_into_verified_snapshot(self):
         snapshot = self.read()

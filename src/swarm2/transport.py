@@ -80,33 +80,46 @@ class HidrawTransport:
         self._stack.close()
 
     @contextmanager
-    def configuration_session(self):
+    def configuration_session(self, *, on_event=None):
         """Pair the vendor receiver reporting handshake, including on failure."""
+        if on_event is not None and not callable(on_event):
+            raise DeviceError("Receiver event handler must be callable")
         if not getattr(self, "wireless", False):
             yield
             return
+        options = {"on_event": on_event} if on_event is not None else {}
         original = None
         try:
-            self._set_receiver_reporting(False)
+            self._set_receiver_reporting(False, **options)
             yield
         except BaseException as error:
             original = error
             raise
         finally:
             try:
-                self._set_receiver_reporting(True)
+                self._set_receiver_reporting(True, **options)
             except (OSError, DeviceError) as error:
                 if original is None:
                     raise
                 original.args = (f"{original}; restoring wireless reporting also failed: {error}",)
 
-    def _set_receiver_reporting(self, enabled):
+    def prepare_settings_readback(self):
+        """A polling-rate write can undo the receiver's configuration downshift."""
+        if getattr(self, "wireless", False):
+            self._set_receiver_reporting(False, wait_for_rate=True)
+
+    def _set_receiver_reporting(self, enabled, *, wait_for_rate=False, on_event=None):
         """Source FUN_180277e60: transient 0f/00 and 0f/07, never settings."""
         if not getattr(self, "wireless", False) or type(enabled) is not bool:
             raise DeviceError("Receiver reporting requires a wireless session and boolean state")
+        if on_event is not None and not callable(on_event):
+            raise DeviceError("Receiver event handler must be callable")
         for _ in range(128):
-            if not self.read_event(0):
+            event = self.read_event(0)
+            if not event:
                 break
+            if on_event is not None and len(event) == 8 and event[0] == 0x10:
+                on_event(event)
         else:
             raise DeviceError("Receiver event queue did not settle")
         report = bytes((0x10, 0x0F, 7 if enabled else 0)) + bytes(61)
@@ -129,7 +142,11 @@ class HidrawTransport:
                     accepted = True
                 elif event[4] != 2:
                     raise DeviceError(f"Receiver reporting rejected with status {event[4]}")
-            if accepted and (not enabled or rate_event):
+            elif event[2:4] != b"\x05\x05" and on_event is not None:
+                # Specialized pumps must not lose completion notifications
+                # while the receiver changes its reporting rate.
+                on_event(event)
+            if accepted and (not (enabled or wait_for_rate) or rate_event):
                 time.sleep(.3)
                 return
         raise DeviceError("Receiver reporting acknowledgement or rate event timed out")
@@ -157,6 +174,7 @@ class HidrawTransport:
             raise DeviceError("Unsupported feature command")
         if ack_discriminator not in (0xF2, 0x06):
             raise DeviceError("Unsupported acknowledgement channel")
+        self._feature_read = None
         # Drop prior events on our own handle; never retain keyboard reports.
         for _ in range(128):
             if not select.select([self.events], [], [], 0)[0]:
@@ -178,6 +196,8 @@ class HidrawTransport:
             ack = decode_acknowledgement(event, target="mouse" if ack_discriminator == 0xF2 else "transmitter")
             self.acknowledgements.append(event.hex())
             if ack.status == AckStatus.ACCEPTED:
+                if report[:3] == b"\x10\x1c\x00":
+                    self._feature_read = report
                 return
             if ack.status != AckStatus.BUSY:
                 raise DeviceError(f"Mouse rejected command with status {ack.status_code}")
@@ -202,8 +222,14 @@ class HidrawTransport:
         import fcntl
         if not isinstance(report, bytes) or len(report) != 64:
             raise DeviceError("MC7 feature report must contain exactly 64 bytes")
-        return fcntl.ioctl(
+        self._feature_read = None
+        count = fcntl.ioctl(
             self.control, self._request(6, 64), bytearray(report), True)
+        if count == 64 and report[:3] == b"\x10\x1c\x00":
+            # Specialized event pumps await their own ACKs before GET. Keep
+            # their profile/page identity just like the ordinary send path.
+            self._feature_read = report
+        return count
 
     def _get_feature_now(self, selector: int) -> bytes:
         """Read a seeded feature report without the generic command delay."""
@@ -227,7 +253,8 @@ class HidrawTransport:
         deadline = time.monotonic() + 2
         for _ in range(128):
             response = self._get_feature_now(selector)
-            if response[:2] == bytes((0x10, selector)):
+            if (response[:2] == bytes((0x10, selector))
+                    and self._matches_feature_identity(response, selector)):
                 # The receiver pads LCD/page records to the HID envelope. Keep
                 # the same strict codecs as USB and discard only a zero tail.
                 length = {0x25: 61, 0x29: 54}.get(selector)
@@ -240,6 +267,18 @@ class HidrawTransport:
                 break
             time.sleep(0.015)
         raise DeviceError("No matching reply from the wireless mouse. Wake it, check 2.4 GHz mode and read again.")
+
+    def _matches_feature_identity(self, response: bytes, selector: int) -> bool:
+        """A matching selector can still belong to a prior profile or LCD page."""
+        request = getattr(self, "_feature_read", None)
+        if (request is None or request[3] != selector
+                or response[2:3] != b"\x00"):
+            return True  # Let the codec reject malformed/status-error replies.
+        if selector == 0x29 and len(response) >= 8:
+            return response[6:8] == request[4:6]
+        if selector in (0x10, 0x15, 0x16, 0x25, 0x2A) and len(response) >= 4:
+            return response[3] == request[4]
+        return True
 
     def get_sensor(self) -> bytes:
         response = self.get_feature(0x10)

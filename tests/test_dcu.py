@@ -1,17 +1,25 @@
 """Test the isolated DCU workflow with a bounded synthetic event pump."""
 
+from contextlib import contextmanager, nullcontext
+import io
 import os
 import json
 import subprocess
 import sys
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
-from swarm2.dcu import DcuRuntime, JsonCommandReader
+from swarm2 import dcu
+from swarm2.dcu import CalibrationTransport, DcuRuntime, JsonCommandReader
 from swarm2.transport import DeviceError
 from tests.test_dcu_commands import ACK, D1, profiles
 
 
 class FakeCalibrationTransport:
+    def command_session(self):
+        return nullcontext()
+
     def __init__(self):
         self.now = 10.0
         self.records = profiles()
@@ -21,6 +29,10 @@ class FakeCalibrationTransport:
         self.drop_ack = set()
         self.disconnect = False
         self.read_count = 0
+        self.prepared = False
+
+    def prepare_calibration(self):
+        self.prepared = True
 
     def read_profiles(self):
         self.read_count += 1
@@ -60,6 +72,7 @@ class DcuRuntimeTests(unittest.TestCase):
         self.assertEqual(self.transport.commands, [])
         self.runtime.start()
         self.assertEqual(self.transport.read_count, 1)
+        self.assertTrue(self.transport.prepared)
         self.assertEqual(self.transport.commands, [0x90])
         self.transport.events.append(ACK)
         self.runtime.tick()
@@ -124,6 +137,7 @@ class DcuRuntimeTests(unittest.TestCase):
             self.runtime.start()
         self.runtime.recover(error.exception)
         self.assertEqual(self.transport.commands, [])
+        self.assertFalse(self.transport.prepared)
         self.assertFalse(self.runtime.outcome["device_may_have_changed"])
         self.assertEqual(self.runtime.outcome["outcome"], "error")
 
@@ -137,6 +151,122 @@ class DcuRuntimeTests(unittest.TestCase):
         self.runtime.recover(error.exception)
         self.assertEqual(self.runtime.outcome["outcome"], "uncertain")
         self.assertEqual(self.transport.commands, [0x90, 0x93, 0x92, 0x93])
+
+
+class CalibrationReceiverTests(unittest.TestCase):
+    def setUp(self):
+        self.events = []
+        self.commands = []
+        self.sessions = []
+        self.actions = []
+        self.resume_event = None
+
+        @contextmanager
+        def configuration_session(*, on_event):
+            self.sessions.append("pause")
+            self.actions.append("pause")
+            # A notification before Start must not count as its completion.
+            on_event(D1)
+            try:
+                yield
+            finally:
+                self.sessions.append("resume")
+                self.actions.append("resume")
+                if self.resume_event is not None:
+                    on_event(self.resume_event)
+
+        def write(report):
+            self.commands.append(report[2])
+            self.actions.append(f"write:{report[2]:02x}")
+            self.events.append(ACK)
+            return 64
+
+        raw = SimpleNamespace(
+            configuration_session=configuration_session,
+            control=SimpleNamespace(send_feature_report=write),
+            events=SimpleNamespace(read=lambda *_: self.events.pop(0) if self.events else b""),
+            send=Mock(),
+        )
+        self.adapter = CalibrationTransport(raw)
+        self.runtime = DcuRuntime(self.adapter, lambda _: None)
+
+    def start(self):
+        with patch("swarm2.dcu.read_sensor", side_effect=[SimpleNamespace(raw=r) for r in profiles()]), \
+             patch("swarm2.dcu.read_raw", return_value=bytes.fromhex("1012000005fb")):
+            self.runtime.start()
+
+    def test_profile_reads_and_start_each_pair_reporting_and_discard_stale_completion(self):
+        self.start()
+        self.assertEqual(self.sessions, ["pause", "resume"] * 3)
+        self.assertEqual(self.commands, [0x90])
+        self.assertEqual(self.runtime.session.phase, "running")
+        self.adapter.transport.send.assert_called_once_with(bytes.fromhex("1012800569") + bytes(59))
+
+    def test_activation_preserves_current_profile_count_and_energy_saving(self):
+        # Active slot 3, four enabled slots, energy saving enabled.
+        before = bytes.fromhex("1012000214ea")
+        with patch("swarm2.dcu.read_raw", return_value=before):
+            self.adapter.prepare_calibration()
+        self.adapter.transport.send.assert_called_once_with(bytes.fromhex("1012821458") + bytes(59))
+
+    def test_changed_profile_after_activation_prevents_calibration_start(self):
+        with patch("swarm2.dcu.read_sensor", side_effect=[SimpleNamespace(raw=r) for r in profiles()]), \
+             patch("swarm2.dcu.read_raw", side_effect=[bytes.fromhex("1012000005fb"), bytes.fromhex("1012000105fa")]):
+            with self.assertRaisesRegex(DeviceError, "profile changed"):
+                self.runtime.start()
+        self.assertEqual(self.commands, [])
+
+    def test_completion_during_resume_reaches_running_session(self):
+        self.resume_event = D1
+        self.start()
+        self.assertEqual(self.runtime.session.phase, "running")
+        self.runtime.tick()
+        self.assertEqual(self.runtime.session.phase, "result_ready")
+        self.assertEqual(self.runtime.session.completion.raw, D1)
+
+    def test_resume_ack_and_touch_namespace_never_count_as_completion(self):
+        for event in (ACK, D1[:1] + b"\x33" + D1[2:]):
+            with self.subTest(event=event):
+                self.resume_event = event
+                self.adapter._pending_completion = None
+                self.adapter._preserve_completion(event)
+                self.assertEqual(self.adapter.read_event(0), b"")
+
+    def test_save_keeps_reporting_paused_across_reset_and_commit(self):
+        self.resume_event = D1
+        self.start()
+        self.runtime.tick()
+        self.actions.clear()
+        with patch("swarm2.dcu.read_sensor", side_effect=[SimpleNamespace(raw=r) for r in profiles(1)]):
+            self.runtime.commit()
+        self.assertEqual(self.actions[:4], ["pause", "write:93", "write:92", "resume"])
+        self.assertEqual(self.commands, [0x90, 0x93, 0x92])
+        self.assertEqual(self.runtime.outcome["outcome"], "committed")
+
+    def test_failed_commit_still_resumes_without_replaying_either_save_packet(self):
+        self.resume_event = D1
+        self.start()
+        self.runtime.tick()
+        self.actions.clear()
+        original = self.adapter.write
+
+        def failing_write(report):
+            if report[2] == 0x92:
+                self.actions.append("failed:92")
+                raise DeviceError("Incomplete commit transfer")
+            return original(report)
+
+        with patch.object(self.adapter, "write", side_effect=failing_write):
+            with self.assertRaisesRegex(DeviceError, "Incomplete commit"):
+                self.runtime.commit()
+        self.assertEqual(self.actions, ["pause", "write:93", "failed:92", "resume"])
+
+    def test_write_failure_still_resumes_reporting_without_replaying_start(self):
+        with patch.object(self.adapter, "write", side_effect=DeviceError("Disconnected")) as write:
+            with self.assertRaisesRegex(DeviceError, "Disconnected"):
+                self.start()
+        write.assert_called_once()
+        self.assertEqual(self.sessions, ["pause", "resume"] * 3)
 
 
 class CommandPipeTests(unittest.TestCase):
@@ -179,6 +309,39 @@ class CommandPipeTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "error")
         self.assertFalse(result["device_may_have_changed"])
         self.assertIn("Explicit Start", result["error"])
+
+
+class HelperTimeoutTests(unittest.TestCase):
+    def test_extended_window_reaches_runtime_and_explicit_cancel_still_verifies(self):
+        for timeout in (180, 300, None):
+            command = {"command": "start", "device_id": "fixture"}
+            if timeout is not None:
+                command["timeout_seconds"] = timeout
+            reader = Mock(eof=False)
+            reader.read.side_effect = [command, {"command": "cancel"}]
+            output = io.StringIO()
+            with self.subTest(timeout=timeout), \
+                 patch.object(dcu, "JsonCommandReader", return_value=reader), \
+                 patch.object(dcu, "_transport_factory", return_value=nullcontext(object())), \
+                 patch.object(dcu, "CalibrationTransport", return_value=FakeCalibrationTransport()), \
+                 patch.object(dcu, "DcuRuntime", wraps=DcuRuntime) as runtime, \
+                 patch.object(dcu.threading, "Timer"), \
+                 patch.object(dcu.sys, "stdin", Mock()), patch.object(dcu.sys, "stdout", output):
+                self.assertEqual(dcu.main(), 0)
+            self.assertEqual(runtime.call_args.kwargs["timeout_seconds"], timeout or 300)
+            result = json.loads(output.getvalue().splitlines()[-1])
+            self.assertEqual(result["outcome"], "cancelled")
+            self.assertTrue(result["verified"])
+
+    def test_timeout_above_bound_is_rejected_before_opening_device(self):
+        reader = Mock()
+        reader.read.return_value = {"command": "start", "device_id": "fixture", "timeout_seconds": 301}
+        with patch.object(dcu, "JsonCommandReader", return_value=reader), \
+             patch.object(dcu, "_transport_factory") as factory, \
+             patch.object(dcu.threading, "Timer"), \
+             patch.object(dcu.sys, "stdin", Mock()), patch.object(dcu.sys, "stdout", io.StringIO()):
+            self.assertEqual(dcu.main(), 2)
+        factory.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ Use the same page controls and Apply buttons as with a USB connection. The appli
 
 Choose **ECO mode or energy saving**, one at a time. On the tested mouse firmware 5.09 and receiver firmware 5.02, enabling both disconnects configuration access even though pointer input still works. Apply is disabled until you choose one mode, and the backend rejects conflicting requests before any HID report is sent. You can combine them through a direct USB connection.
 
-Wireless hardware validation is less complete than wired validation. Custom calibration, image transfers, long-running LCD services and 8 kHz behavior have not completed wireless acceptance; use USB for those workflows. Firmware access, pairing and Bluetooth configuration are unavailable through the receiver. Use a direct USB connection for firmware workflows.
+Wireless hardware validation is less complete than wired validation. Version 0.2.1 has passed surface-calibration completion, saving, readback and user tracking checks over USB and Linux 2.4 GHz at the 4 kHz setting on firmware 5.09. Long-running LCD services have not completed wireless acceptance; use USB for those services. Version 0.2.1 has passed application-icon upload, replacement, rendering and launch checks at 4 kHz, plus 8 kHz configuration, readback and pointer-responsiveness checks; effective report frequency and latency have not been measured. Version 0.2.1 includes the wireless 8 kHz handshake and application-icon refresh fixes; use USB for 8 kHz workflows with 0.2.0. Firmware access, pairing and Bluetooth configuration are unavailable through the receiver. Use a direct USB connection for firmware workflows.
 
 ## Mouse settings and local data
 
@@ -68,7 +68,7 @@ You can configure:
 
 At least one DPI stage must remain enabled. **Find a comfortable DPI…** and **Align my angle…** use pointer exercises to suggest values; accepting a suggestion changes the local draft until you choose **Apply sensitivity**.
 
-**Calibrate my surface…** starts the mouse's custom lift-off calibration. This is a separate device operation that affects all profiles. Keep the mouse on its usual surface and follow the Save or Cancel status shown by the dialog.
+**Calibrate my surface…** starts the mouse's custom lift-off calibration. This is a separate device operation that affects all profiles. Keep the mouse flat on its usual surface and move it in wide circles. Calibration depends on accumulated movement and can take several minutes; the collection window is limited to five minutes. Save becomes available only after the mouse reports completion; a command acknowledgement alone does not confirm calibration. If collection times out, the helper cancels and checks the previous preset in all five profiles. Version 0.2.1 has passed completion, saving, all-five-profile readback and user tracking checks over USB and Linux 2.4 GHz at 4 kHz on firmware 5.09. Lift-off height has not been measured; calibration at 8 kHz remains unverified. Upgrade from 0.2.0 before using custom surface calibration.
 
 ### Buttons
 
@@ -106,6 +106,15 @@ Choose **Apply display settings** after changing the layout, brightness, timeout
 Create, duplicate, rename and delete macros in the local library. You can add key, mouse and delay events manually or use the focused recording area. The recorder captures input only while its area has focus; it is not a global input recorder.
 
 Button macros support Once, Repeat, While held and Toggle playback. LCD Macro tiles support Once, Repeat and Toggle. Assign a macro from **Buttons** or from a Macro cell on **Display**, then apply that section. Assigned macro data is sent to the mouse before its button or tile is enabled.
+
+| Button playback mode | How to use it |
+| --- | --- |
+| Once | Press the assigned button to play the sequence once. |
+| Repeat | Press once to play the sequence the number of times shown in Repeat count. |
+| While held | Hold the assigned button to repeat the sequence; release it to stop. |
+| Toggle | Press once to start repeating; press the same button again to stop. |
+
+Applied button macros run on the mouse, including over the Linux 2.4 GHz connection. MC7 Studio does not need to stay open for playback. The local Repeat count is used only by Repeat mode.
 
 ### Profiles
 
@@ -155,7 +164,7 @@ Follow the message in the window and read the mouse again before retrying. If a 
 
 ## Current limitations
 
-- Linux 2.4 GHz configuration is supported in 0.2. Wireless hardware validation is less complete than wired validation, especially for custom calibration, image transfers, long-running LCD services and 8 kHz behavior. macOS and Windows require a direct USB connection.
+- Linux 2.4 GHz configuration is supported in 0.2. Wireless hardware validation is less complete than wired validation, especially for long-running LCD services. Custom calibration has passed USB and 4 kHz wireless checks in 0.2.1; upgrade from 0.2.0 for those fixes. Effective 8 kHz report frequency and latency remain unmeasured; the 0.2.0 downloads require USB for 8 kHz workflows. macOS and Windows require a direct USB connection.
 - Transmitter firmware installation, pairing, standalone factory reset and interrupted-update recovery are unavailable.
 - KDE Plasma and Wayland compositors other than GNOME, Sway and Hyprland do not provide automatic foreground-profile switching.
 - macOS and Windows support are implemented, but physical MC7 validation is less complete than Linux validation.

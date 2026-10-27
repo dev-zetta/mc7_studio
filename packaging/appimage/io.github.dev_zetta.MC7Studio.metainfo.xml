@@ -20,6 +20,7 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.1" date="2026-10-27"><description><p>Fixes custom surface calibration, application-icon refresh and 8 kHz wireless configuration.</p></description></release>
     <release version="0.2.0" date="2026-10-27"><description><p>Adds Linux 2.4 GHz wireless configuration, receiver lighting and power support, and clearer device status.</p></description></release>
     <release version="0.1.0" date="2026-09-18"/>
   </releases>

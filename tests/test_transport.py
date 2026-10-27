@@ -237,6 +237,55 @@ class AcknowledgementTests(unittest.TestCase):
                     self.transport.get_feature(0x10)
             self.assertEqual(get.call_count, expected)
 
+    def test_receiver_polls_past_same_selector_from_a_previous_profile_or_page(self):
+        self.transport.wireless = True
+        for selector in (0x10, 0x15, 0x16, 0x25, 0x2A, 0x29):
+            with self.subTest(selector=selector):
+                self.transport._feature_read = bytes((0x10, 0x1C, 0, selector, 4, 2, 0)) + bytes(57)
+                length = {0x25: 61, 0x29: 54}.get(selector, 12)
+                current = bytearray((0x10, selector, 0, 4)) + bytearray(length - 4)
+                if selector == 0x29:
+                    current[6:8] = bytes((4, 2))
+                    wrong_profile, wrong_page = bytearray(current), bytearray(current)
+                    wrong_profile[6], wrong_page[7] = 3, 1
+                    stale = [bytes(wrong_profile), bytes(wrong_page)]
+                else:
+                    previous = bytearray(current)
+                    previous[3] = 3
+                    stale = [bytes(previous)]
+                with patch.object(self.transport, '_get_feature_now', side_effect=[*stale, bytes(current)]) as get, \
+                     patch.object(self.transport, 'send') as send, patch('swarm2.transport.time.sleep'):
+                    self.assertEqual(self.transport.get_feature(selector), bytes(current))
+                self.assertEqual(get.call_count, len(stale) + 1)
+                send.assert_not_called()
+
+    def test_acknowledged_page_read_retains_identity_until_its_reply_arrives(self):
+        from swarm2.screen_key_commands import build_screen_key_read_request
+        self.transport.wireless = True
+        report = build_screen_key_read_request(4, 2)
+        previous = bytes((0x10, 0x29, 0, 0x29, 0x32, 0, 4, 2)) + bytes(46)
+        current = bytes((0x10, 0x29, 0, 0x29, 0x32, 0, 4, 3)) + bytes(46)
+        with patch('swarm2.transport.select.select', side_effect=[([], [], []), ([11], [], [])]), \
+             patch('swarm2.transport.os.read', return_value=acknowledgement()), \
+             patch('fcntl.ioctl', return_value=64) as ioctl, \
+             patch.object(self.transport, '_get_feature_now', side_effect=[previous, current]), \
+             patch('swarm2.transport.time.sleep'):
+            self.transport.send(report)
+            self.assertEqual(self.transport.get_feature(0x29), current)
+        ioctl.assert_called_once()
+
+    def test_receiver_rejects_a_permanently_stale_page_without_replaying_selector(self):
+        self.transport.wireless = True
+        self.transport._feature_read = bytes((0x10, 0x1C, 0, 0x29, 4, 3, 0)) + bytes(57)
+        previous = bytes((0x10, 0x29, 0, 0x29, 0x32, 0, 4, 2)) + bytes(46)
+        with patch.object(self.transport, '_get_feature_now', return_value=previous) as get, \
+             patch.object(self.transport, 'send') as send, \
+             patch('swarm2.transport.time.sleep'), patch('swarm2.transport.time.monotonic', return_value=0):
+            with self.assertRaisesRegex(DeviceError, 'No matching reply'):
+                self.transport.get_feature(0x29)
+        self.assertEqual(get.call_count, 128)
+        send.assert_not_called()
+
     def test_receiver_does_not_hide_a_matching_but_corrupt_reply(self):
         self.transport.wireless = True
         with patch.object(self.transport, '_get_feature_now', return_value=b'\x10\x10\x01') as get, \
@@ -279,12 +328,40 @@ class AcknowledgementTests(unittest.TestCase):
             with self.assertRaisesRegex(DeviceError, 'Incomplete receiver'):
                 self.transport._set_receiver_reporting(False)
             write.assert_called_once()
+        for enabled, wait_for_rate in ((True, False), (False, True)):
+            with self.subTest(enabled=enabled, wait_for_rate=wait_for_rate), \
+                 patch.object(self.transport, 'write_feature', return_value=64) as write, \
+                 patch.object(self.transport, 'read_event', side_effect=[b'']+[acknowledgement(command=0x0F,discriminator=6)]*128), \
+                 patch('swarm2.transport.time.monotonic', return_value=0):
+                with self.assertRaisesRegex(DeviceError, 'rate event timed out'):
+                    self.transport._set_receiver_reporting(enabled, wait_for_rate=wait_for_rate)
+                write.assert_called_once()
+
+    def test_reporting_forwards_vendor_notifications_during_drain_and_rate_wait(self):
+        self.transport.wireless = True
+        before = bytes.fromhex("1000d10000000000")
+        during = bytes.fromhex("1000d10100000000")
+        keyboard = bytes.fromhex("0100000400000000")
+        incoming = [before, keyboard, b"", acknowledgement(command=0x0F, discriminator=6),
+                    during, keyboard, bytes.fromhex("1000050500000000")]
+        observed = []
+        with patch.object(self.transport, "write_feature", return_value=64) as write, \
+             patch.object(self.transport, "read_event", side_effect=incoming), \
+             patch("swarm2.transport.time.sleep"):
+            self.transport._set_receiver_reporting(True, on_event=observed.append)
+        self.assertEqual(observed, [before, during])
+        write.assert_called_once()
+
+    def test_receiver_readback_pause_waits_for_rate_transition_after_ack(self):
+        self.transport.wireless = True
+        incoming = [b'', acknowledgement(command=0x0F, discriminator=6),
+                    bytes.fromhex('1000050501e80300')]
         with patch.object(self.transport, 'write_feature', return_value=64) as write, \
-             patch.object(self.transport, 'read_event', side_effect=[b'']+[acknowledgement(command=0x0F,discriminator=6)]*128), \
-             patch('swarm2.transport.time.monotonic', return_value=0):
-            with self.assertRaisesRegex(DeviceError, 'rate event timed out'):
-                self.transport._set_receiver_reporting(True)
-            write.assert_called_once()
+             patch.object(self.transport, 'read_event', side_effect=incoming) as read, \
+             patch('swarm2.transport.time.sleep'):
+            self.transport.prepare_settings_readback()
+        self.assertEqual(read.call_count, 3)
+        write.assert_called_once_with(bytes((0x10, 0x0F, 0)) + bytes(61))
 
     def test_receiver_configuration_restores_reporting_after_start_or_operation_failure(self):
         self.transport.wireless = True

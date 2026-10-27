@@ -3,9 +3,9 @@
 Start with the read-only diagnostic. It reports device discovery and access without opening the mouse or changing its settings:
 
 ```sh
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage --version
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage doctor
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage devices
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage --version
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage doctor
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage devices
 ```
 
 For a wheel or source installation, use the installed commands:
@@ -25,14 +25,14 @@ The release AppImage supports x86_64 Linux systems with glibc 2.35 or newer. It 
 Make sure the download is executable and stored on a filesystem that permits programs to run:
 
 ```sh
-chmod +x MC7-Studio-0.2.0-x86_64.AppImage
-./MC7-Studio-0.2.0-x86_64.AppImage
+chmod +x MC7-Studio-0.2.1-x86_64.AppImage
+./MC7-Studio-0.2.1-x86_64.AppImage
 ```
 
 If it is on a filesystem mounted with `noexec`, move it to a local directory such as `~/Applications` and try again. If the error mentions FUSE or `libfuse.so.2`, use the AppImage runtime's extraction fallback:
 
 ```sh
-./MC7-Studio-0.2.0-x86_64.AppImage --appimage-extract-and-run
+./MC7-Studio-0.2.1-x86_64.AppImage --appimage-extract-and-run
 ```
 
 The AppImage includes Python, the GUI dependencies, `7zz`, `libusb` and its HTTPS certificate trust store. A missing one of those components in a current AppImage is a packaging problem; record the terminal output and report it with the AppImage checksum.
@@ -54,7 +54,7 @@ Make sure the wheel command ends in `[gui]`. Installing the wheel without that e
 On macOS, connect exactly one MC7 mouse directly. If the diagnostic reports that HIDAPI is unavailable, reinstall the GUI extra from the release wheel:
 
 ```sh
-mc7-studio/bin/python -m pip install --force-reinstall '/path/to/swarm2_mc7-0.2.0-py3-none-any.whl[gui]'
+mc7-studio/bin/python -m pip install --force-reinstall '/path/to/swarm2_mc7-0.2.1-py3-none-any.whl[gui]'
 ```
 
 macOS USB support is experimental and has not yet completed physical hardware acceptance.
@@ -155,7 +155,7 @@ Only the supported current mouse upgrade path is enabled. Historical reinstallat
 Launch the AppImage from a terminal so the startup error remains visible:
 
 ```sh
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage
 ```
 
 For a wheel installation, launch its GUI command from a terminal:
@@ -173,6 +173,12 @@ For the Windows portable build, run `MC7-Studio-CLI.exe` from PowerShell if the 
 The AppImage does not update itself silently. Download the new release manually or use a compatible update tool with the published `.zsync` metadata, then run the resulting AppImage.
 
 Start at login records the absolute AppImage path. If you moved, renamed or replaced a version-named file, launch the current AppImage, open **Device → Check and install host integration…**, and choose **Install or update start-at-login entry**. You can keep a stable filename and replace its contents during future updates to keep the path unchanged.
+
+## Surface calibration times out
+
+If collection reaches its deadline without a completion signal, the helper cancels without saving a custom result. If the dialog confirms cancellation and readback, the previous preset was checked in all five profiles; if it reports an uncertain result, reconnect the mouse and read every profile before continuing.
+
+Custom surface calibration is still experimental. The 0.2.0 helper omits notification activation and stops collection after 90 seconds; both can prevent completion on firmware 5.09. Version 0.2.1 enables notifications, allows up to five minutes and keeps the wireless Save packets in one reporting pause. Completion, saving, all-five-profile readback and user tracking checks have passed over USB and Linux 2.4 GHz at 4 kHz. Upgrade from 0.2.0 before using custom surface calibration. With 0.2.0, keep using Low or Very Low; a successful Start alone does not confirm completed calibration.
 
 ## Collect useful diagnostics
 

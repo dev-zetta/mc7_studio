@@ -2,7 +2,7 @@
 
 **Configure your Turtle Beach Command Series MC7 on Linux, macOS and Windows.** MC7 Studio is an independent, native desktop application for onboard profiles, sensor settings, buttons, macros, lighting and the mouse's touch display.
 
-[Download 0.2.0](https://github.com/dev-zetta/mc7_studio/releases/tag/v0.2.0) · [Getting started](docs/getting-started.md) · [User guide](docs/user-guide.md) · [Report a problem](https://github.com/dev-zetta/mc7_studio/issues)
+[Download 0.2.1](https://github.com/dev-zetta/mc7_studio/releases/tag/v0.2.1) · [Getting started](docs/getting-started.md) · [User guide](docs/user-guide.md) · [Report a problem](https://github.com/dev-zetta/mc7_studio/issues)
 
 <p align="center"><a href="https://www.turtlebeach.com/products/command-series-mc7-mouse"><img src="https://cdn.shopify.com/s/files/1/0556/5795/5430/files/2_TB_TB_Command_Series_MC7_DTC_2400x1350_464a7baa-f695-41da-ab94-2ba9b2b8b666.png?v=1776360347&amp;width=1200" width="800" alt="Turtle Beach Command Series MC7 mouse with its touch display"></a></p>
 
@@ -18,14 +18,12 @@
 
 </details>
 
-## What’s new in 0.2
+## What’s new in 0.2.1
 
-- **Linux 2.4 GHz wireless configuration:** select the USB receiver and configure the mouse without its cable.
-- **Wireless lighting and power controls:** receiver-specific lighting records are handled explicitly, with repeated-read and write/readback verification.
-- **Reliable wireless replies:** wait for the requested record instead of accepting a previous response from the receiver's cache.
-- **Clear connection status:** the application identifies wired and 2.4 GHz connections and displays the polling rate for the current connection.
-- **Safer partial reads:** Apply is disabled on a page when its required settings could not be read.
-- **Wireless power-mode protection:** choose ECO mode or energy saving; the application blocks their conflicting combination before sending any HID report.
+- **Surface calibration:** completed and saved over USB and Linux 2.4 GHz at 4 kHz, with more time for movement and verified settings readback.
+- **Application icons:** replacing an icon or changing an application label refreshes the mouse display automatically and preserves other tiles that shared the original icon.
+- **8 kHz wireless configuration:** improved polling-rate changes and subsequent settings reads.
+- **Reliable profile reads:** LCD services check the requested profile and page before accepting a cached receiver reply.
 
 ## Features
 
@@ -43,9 +41,9 @@ Get the application and adjacent checksum from [GitHub Releases](https://github.
 
 | Platform | Package | Requirements |
 | --- | --- | --- |
-| Linux | `MC7-Studio-0.2.0-x86_64.AppImage` | x86_64, glibc 2.35 or newer, graphical desktop |
-| Windows | `MC7-Studio-0.2.0-windows-x86_64.zip` | 64-bit Windows 10 or newer |
-| macOS | `MC7-Studio-0.2.0-macos-arm64.zip` | Apple Silicon M1 or newer, macOS 13 or newer |
+| Linux | `MC7-Studio-0.2.1-x86_64.AppImage` | x86_64, glibc 2.35 or newer, graphical desktop |
+| Windows | `MC7-Studio-0.2.1-windows-x86_64.zip` | 64-bit Windows 10 or newer |
+| macOS | `MC7-Studio-0.2.1-macos-arm64.zip` | Apple Silicon M1 or newer, macOS 13 or newer |
 | Python installation | Wheel or source archive | Python 3.10 or newer; install the `[gui]` extra |
 
 The portable packages include Python, Qt, HIDAPI, 7-Zip and the application dependencies. Windows packages are unsigned; the macOS app is ad-hoc signed and is not Apple notarized.
@@ -53,11 +51,11 @@ The portable packages include Python, Qt, HIDAPI, 7-Zip and the application depe
 ### Linux AppImage
 
 ```sh
-sha256sum -c MC7-Studio-0.2.0-x86_64.AppImage.sha256
+sha256sum -c MC7-Studio-0.2.1-x86_64.AppImage.sha256
 mkdir -p "$HOME/Applications"
-mv MC7-Studio-0.2.0-x86_64.AppImage "$HOME/Applications/"
-chmod +x "$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
-"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
+mv MC7-Studio-0.2.1-x86_64.AppImage "$HOME/Applications/"
+chmod +x "$HOME/Applications/MC7-Studio-0.2.1-x86_64.AppImage"
+"$HOME/Applications/MC7-Studio-0.2.1-x86_64.AppImage"
 ```
 
 Open **Device → Check and install host integration…** to install the USB access rule, then reconnect the mouse or receiver. Run the application as your normal desktop user.
@@ -66,7 +64,7 @@ Open **Device → Check and install host integration…** to install the USB acc
 
 On Windows, verify the ZIP's SHA-256 checksum, extract the entire archive to a permanent folder and run `MC7-Studio.exe`. Keep `MC7-Studio-CLI.exe` and `_internal` beside it; device operations use the console helper.
 
-On macOS, verify the ZIP with `shasum -a 256 -c MC7-Studio-0.2.0-macos-arm64.zip.sha256`, extract it in Finder and move **MC7 Studio.app** to **Applications**. If macOS blocks the first launch, review the download and use **System Settings → Privacy & Security → Open Anyway**.
+On macOS, verify the ZIP with `shasum -a 256 -c MC7-Studio-0.2.1-macos-arm64.zip.sha256`, extract it in Finder and move **MC7 Studio.app** to **Applications**. If macOS blocks the first launch, review the download and use **System Settings → Privacy & Security → Open Anyway**.
 
 ## Connect and configure
 
@@ -86,7 +84,9 @@ Sensitivity, button assignments, supported macros, lighting, LCD layout and powe
 | 2.4 GHz receiver | Supported in 0.2 | Unavailable | Unavailable |
 | Bluetooth | Unavailable | Unavailable | Unavailable |
 
-Only the Command Series MC7 is supported. Wireless feature validation is less complete than wired validation; custom calibration, image transfers, long-running LCD services and 8 kHz behavior have not completed wireless hardware acceptance. Use a direct USB connection for those workflows and firmware operations. Close Swarm II and other configurators before opening a device session.
+Only the Command Series MC7 is supported. Wireless feature validation is less complete than wired validation. Custom surface calibration remains experimental: version 0.2.1 has passed completion, saving, readback and user tracking checks over USB and Linux 2.4 GHz at the 4 kHz setting on firmware 5.09. Use a direct USB connection for long-running LCD services and firmware operations. Version 0.2.1 has passed wireless application-icon upload, replacement, rendering and launch checks at 4 kHz, plus 8 kHz configuration, readback and pointer-responsiveness checks; effective report frequency and latency have not been measured. Close Swarm II and other configurators before opening a device session.
+
+Upgrade from 0.2.0 to 0.2.1 for the wireless 8 kHz handshake, application-icon refresh and surface-calibration fixes. See the [0.2.1 release notes](docs/releases/0.2.1.md).
 
 On 2.4 GHz, enable **ECO mode or energy saving**, one at a time. With mouse firmware 5.09 and receiver firmware 5.02, enabling both keeps pointer input working but disconnects configuration access. MC7 Studio disables Apply for that combination and rejects it before any HID report is sent. Use USB if you need both enabled.
 
@@ -109,9 +109,9 @@ A settings backup is not a firmware image and cannot preserve custom LCD image p
 The AppImage also accepts diagnostic commands:
 
 ```sh
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage doctor
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage devices
-~/Applications/MC7-Studio-0.2.0-x86_64.AppImage read --profile 1 --json
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage doctor
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage devices
+~/Applications/MC7-Studio-0.2.1-x86_64.AppImage read --profile 1 --json
 ```
 
 Wheel and source installations provide the same commands through `swarm2`. If multiple accessible mice are present, use `read --device` with the physical ID shown by the application. Discovery and `doctor` do not open HID handles or change mouse settings.

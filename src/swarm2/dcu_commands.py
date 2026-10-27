@@ -12,6 +12,8 @@ from typing import Sequence
 
 from .protocol import AckStatus, ProtocolError, decode_acknowledgement, decode_sensor_response
 
+DEFAULT_TIMEOUT_SECONDS = 300
+
 
 def _report(value: int) -> bytes:
     return bytes((0x10, 0x19, value, 0)) + bytes(60)
@@ -85,13 +87,13 @@ class DcuCalibrationSession:
     the caller for deterministic tests and an explicit host deadline.
     """
 
-    def __init__(self, baseline: Sequence[bytes], *, timeout_seconds: float = 90):
+    def __init__(self, baseline: Sequence[bytes], *, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS):
         self.baseline = _profiles(baseline)
         values = {record[45] for record in self.baseline}
         if len(values) != 1 or next(iter(values)) not in (0, 0x85):
             raise ProtocolError("Start DCU calibration from the same Very Low or Low preset in all five profiles; existing custom calibration cannot be backed up")
         timeout = _timestamp(timeout_seconds)
-        if not 5 <= timeout <= 300:
+        if not 5 <= timeout <= DEFAULT_TIMEOUT_SECONDS:
             raise ProtocolError("Calibration timeout must be between 5 and 300 seconds")
         self.timeout_seconds = timeout
         self.phase = DcuPhase.READY

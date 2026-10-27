@@ -337,7 +337,14 @@ def _plan(section, configuration, raw, profile, *, macro_plans=None, force_layer
             commands.extend(key_reports)
             expected["screen_keys"] = bytearray(predicted_keys.raw)
             edits = lcd_edits(state, display.pages)
-            if edits or force_lcd:
+            refresh_application_tiles = any(
+                widget == "open_application"
+                and key_state.pages[page].records[cell] != predicted_keys.pages[page].records[cell]
+                for page, row in enumerate(desired_pages)
+                for cell, widget in enumerate(row))
+            # Updating an icon reference/label alone does not repaint the
+            # firmware's cached application tile. Reload its unchanged layout.
+            if edits or force_lcd or refresh_application_tiles:
                 packet = build_lcd_report(state, pages=edits)
                 add(packet)
                 prediction = bytearray(packet[:61])
@@ -526,6 +533,14 @@ def _transact_settings(request, transport):
                                           custom_icon_plan.icon_indices
                                           if custom_icon_plan is not None else None))
             predictions = {name: stable(name, bytes(value), lighting_format=lighting_format) for name, value in expected.items()}
+            prepare_readback = None
+            if (getattr(transport, "wireless", False) and section == "sensor"
+                    and config.sensor.polling_rate == 8000
+                    and any(command[1] == 0x10 for command in commands)):
+                if "profile" not in raw:
+                    raise DeviceError("Read the active profile successfully before changing wireless polling to 8 kHz")
+                if decode_profile_response(raw["profile"]).current_profile == profile:
+                    prepare_readback = getattr(transport, "prepare_settings_readback", None)
             custom_icon_uploads = ()
             if (commands or macro_updates or
                     (custom_icon_plan is not None and custom_icon_plan.uploads)):
@@ -539,6 +554,8 @@ def _transact_settings(request, transport):
                         execute_macro_updates(transport, macro_updates, disabling)
                     for command in commands:
                         transport.send(command)
+                    if prepare_readback is not None:
+                        prepare_readback()
                     after = read_bundle(transport, profile)
                     for name, prediction in predictions.items():
                         observed = after["settings"].get(name)

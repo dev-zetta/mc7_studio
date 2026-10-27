@@ -6,6 +6,7 @@ from PySide6.QtCore import QProcess, QTimer, Signal
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QProgressBar, QPushButton, QVBoxLayout
 
 from ..dcu import HARD_TIMEOUT_SECONDS
+from ..dcu_commands import DEFAULT_TIMEOUT_SECONDS
 from ..runtime import helper_command
 from .widgets import STYLE, label
 
@@ -20,7 +21,7 @@ class DcuCalibrationDialog(QDialog):
 
     operation_active = Signal(bool)
 
-    def __init__(self, device_id, parent=None, *, process_factory=QProcess, timeout_seconds=90):
+    def __init__(self, device_id, parent=None, *, process_factory=QProcess, timeout_seconds=DEFAULT_TIMEOUT_SECONDS):
         super().__init__(parent)
         self.device_id = device_id
         self.timeout_seconds = timeout_seconds
@@ -47,7 +48,7 @@ class DcuCalibrationDialog(QDialog):
         layout.addWidget(label("This changes a global setting shared by all five mouse profiles. Start is available only when every profile uses the same Very Low or Low preset. Existing custom surface data cannot be backed up.", "notice", True))
         self.status_label = label("Ready. No calibration command has been sent.", "sectionTitle", True)
         layout.addWidget(self.status_label)
-        self.detail_label = label("Start checks the current settings. When the mouse finishes, choose Save to apply its result.", "muted", True)
+        self.detail_label = label("Start checks the current settings. Keep moving in wide circles; calibration can take several minutes. When the mouse finishes, choose Save to apply its result.", "muted", True)
         layout.addWidget(self.detail_label)
         self.progress = QProgressBar()
         self.progress.setRange(0, 1)

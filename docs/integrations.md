@@ -73,6 +73,8 @@ These tiles store a short trigger on the mouse while their full target remains i
 
 Moving a preset to another computer does not guarantee that its filesystem paths exist there. Review imported targets before enabling the listener. Custom application-icon pixels cannot be read back from the mouse; retain the source image if you will need it again.
 
+Changing one application tile's icon preserves the icons on other tiles, even if they previously shared the same image. Applying an unchanged icon reuses its stored copy. Starting with 0.2.1, changing an icon or application label also refreshes the displayed tile automatically.
+
 ## General Media
 
 The three-slot **General Media** panel controls Shuffle, Next, Play/Pause, Previous and Repeat through a host media service. It also reflects available playing, shuffle and repeat state on the mouse.

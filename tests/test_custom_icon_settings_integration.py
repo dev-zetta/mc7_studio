@@ -48,6 +48,7 @@ class CustomIconSettingsTransport(SettingsTransport):
         self.image_exchanges = []
         self.timeline = []
         self.fail_first_image_selector = False
+        self.rendered_application_records = [[None] * 4 for _ in range(3)]
 
     def set_screen_key_record(self, profile, page, slot, record):
         state = decode_screen_key_responses(self.profile_screen_keys[profile], profile)
@@ -71,6 +72,16 @@ class CustomIconSettingsTransport(SettingsTransport):
             if profile != 0:
                 raise AssertionError("The fixture only edits target profile zero")
             self.profile_screen_keys[profile] = self.records["screen_keys"]
+        elif packet[1] == 0x25:
+            # Observed firmware behavior: 0x29 stores the new reference, but
+            # application tile imagery stays latched until the layout reloads.
+            lcd = decode_lcd_response(self.records["lcd"], 0)
+            keys = decode_screen_key_responses(self.records["screen_keys"], 0)
+            self.rendered_application_records = [
+                [keys.pages[page].records[cell]
+                 if widget is not None and widget.key == "open_application" else None
+                 for cell, widget in enumerate(row.slots)]
+                for page, row in enumerate(lcd.pages[:3])]
 
     def get_feature(self, selector):
         if selector != 0x29:
@@ -240,6 +251,45 @@ class CustomIconSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual(self.transport.writes, [])
         self.assertEqual(self.transport.screen_key_reads, [
             (profile, page) for profile in range(5) for page in range(3)])
+
+    def test_replacing_one_shared_icon_refreshes_pixels_and_preserves_the_other(self):
+        snapshot = self.read()
+        self.configure_application(snapshot['configuration'], icon_value(3))
+        config = snapshot['configuration']
+        config.display.pages[2][1] = 'open_application'
+        config.display.host_action_bindings[2][1] = APPLICATION
+        config.display.host_action_icon_bindings[2][1] = icon_value(3)
+        first = self.service.apply_section('fixture-mc7', config, 'display', snapshot['baseline'])
+        self.assertEqual(first['baseline']['host_action_icon_indices'][2][:2], [0, 0])
+        self.assertEqual(len(self.transport.image_exchanges), 213)
+        old_rendered = self.transport.rendered_application_records[2][0]
+        self.reset_activity()
+        config = copy.deepcopy(first['configuration'])
+        config.display.host_action_icon_bindings[2][1] = icon_value(9)
+        second = self.service.apply_section('fixture-mc7', config, 'display', first['baseline'])
+        self.assertEqual(second['baseline']['host_action_icon_indices'][2][:2], [0, 1])
+        self.assertEqual(self.transport.rendered_application_records[2][0], old_rendered)
+        self.assertEqual(self.transport.rendered_application_records[2][1][4], 2)
+        self.assertEqual([p[1] for p in self.transport.writes], [0x29, 0x25])
+        self.assertEqual(len(self.transport.image_exchanges), 213)
+        self.assertEqual(self.transport.image_exchanges[0][0][2], 106)
+        self.reset_activity()
+        unchanged = self.service.apply_section('fixture-mc7', second['configuration'], 'display', second['baseline'])
+        self.assertFalse(unchanged['summary']['changed'])
+        self.assertEqual(self.transport.image_exchanges, [])
+        self.assertEqual(self.transport.writes, [])
+
+    def test_application_label_change_refreshes_layout_without_reuploading_pixels(self):
+        snapshot = self.read()
+        self.configure_application(snapshot['configuration'], icon_value(3))
+        first = self.service.apply_section('fixture-mc7', snapshot['configuration'], 'display', snapshot['baseline'])
+        self.reset_activity()
+        config = copy.deepcopy(first['configuration'])
+        config.display.host_action_bindings[2][0] = '/opt/New Label'
+        self.service.apply_section('fixture-mc7', config, 'display', first['baseline'])
+        self.assertEqual(self.transport.image_exchanges, [])
+        self.assertEqual(self.transport.rendered_application_records[2][0][5:10], b'New L')
+        self.assertEqual([p[1] for p in self.transport.writes], [0x29, 0x25])
 
     def test_configuration_readback_mismatch_never_reports_apply_success(self):
         snapshot = self.read()

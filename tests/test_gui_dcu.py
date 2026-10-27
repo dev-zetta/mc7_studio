@@ -89,7 +89,7 @@ class DcuDialogTests(unittest.TestCase):
         self.dialog.start_calibration()
         self.dialog.start_calibration()
         process = self.dialog.process
-        self.assertEqual(process.commands, [{"command": "start", "device_id": "fake-mouse", "timeout_seconds": 90}])
+        self.assertEqual(process.commands, [{"command": "start", "device_id": "fake-mouse", "timeout_seconds": 300}])
         self.dialog.commit_calibration()
         self.assertEqual(len(process.commands), 1)
         process.deliver({"type": "progress", "phase": "result_ready"})

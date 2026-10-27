@@ -1,4 +1,4 @@
-"""Synthetic DCU events plus retained sensor fixture; never access USB."""
+"""Retained DCU/sensor identities with synthetic event ordering; no USB access."""
 
 import unittest
 
@@ -10,7 +10,7 @@ from swarm2.protocol import ProtocolError
 
 SENSOR = bytes.fromhex("10100000020200000004010700ff000001010f0000ff000101170000646401011f000000ff01013f00e320ca0185014b")
 ACK = bytes.fromhex("1000f21900000000")
-D1 = bytes.fromhex("1000d10000000000")  # Synthetic identity, not a native capture.
+D1 = bytes.fromhex("1000d10000000000")  # Native wired FW 5.09 completion, 2026-10-27.
 
 
 def profiles(lod=0x85):
@@ -136,8 +136,19 @@ class DcuCommandTests(unittest.TestCase):
 
     def test_timeout_also_applies_to_unaccepted_result(self):
         session = self.ready_session()
-        self.assertTrue(session.check_timeout(now=101))
+        self.assertTrue(session.check_timeout(now=311))
         self.assertEqual(session.phase, DcuPhase.TIMED_OUT)
+
+    def test_default_window_allows_slow_collection_but_still_requires_completion(self):
+        session = DcuCalibrationSession(profiles())
+        session.start(now=10)
+        session.acknowledge(ACK)
+        self.assertFalse(session.check_timeout(now=101))
+        with self.assertRaises(ProtocolError):
+            session.begin_commit(now=101)
+        self.assertTrue(session.observe_completion(D1, now=299))
+        self.assertEqual(session.phase, DcuPhase.RESULT_READY)
+        self.assertTrue(session.check_timeout(now=310))
 
     def test_disconnect_cancel_failure_stays_uncertain_without_replay(self):
         session = self.ready_session()

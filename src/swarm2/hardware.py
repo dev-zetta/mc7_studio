@@ -1,5 +1,6 @@
 """Bounded subprocess entry point for the verified MC7 sensor transactions."""
 
+from contextlib import nullcontext
 import json
 import platform
 import sys
@@ -38,57 +39,65 @@ def transact(request, transport_factory=None):
         from .host_lcd import validate_host_lcd_request
         host_lcd_request = validate_host_lcd_request(request)
     with transport_factory(request["device_id"]) as transport:
-        if request["operation"] == "host_lcd":
-            from .host_lcd import update_host_lcd
-            return update_host_lcd(request, transport, _validated=host_lcd_request)
-        if request["operation"] == "read_status":
-            from .status_commands import build_status_read_request, decode_status_response
-            transport.send(build_status_read_request())
-            status = decode_status_response(transport.get_feature(0x09))
-            return {"firmware_version": status.firmware_version,
-                    "firmware_catalog_version": status.firmware_catalog_version,
-                    "firmware_numeric": status.firmware_numeric, "role": status.role,
-                    "battery_percent": status.battery_percent, "charging": status.charging}
-        if request["operation"] == "upload_background":
-            from .background import upload_background
-            return upload_background(request, transport)
-        if request["operation"] not in ("read", "apply"):
+        if request["operation"] not in ("read", "apply", "read_status", "host_lcd", "upload_background"):
             from .settings import transact_settings
             result = transact_settings(request, transport)
             result["wireless"] = getattr(transport, "wireless", False)
             return result
-        transport_identity = str(getattr(transport, "location_id", request["device_id"]))
-        before = read_sensor(transport, profile_index)
-        changed = False
-        if request["operation"] == "apply":
-            baseline = request.get("baseline")
-            if not isinstance(baseline, dict) or baseline.get("device_id") != request["device_id"] or baseline.get("profile_slot") != profile:
-                raise DeviceError("Read this mouse and profile before applying settings")
-            if baseline.get("transport_identity", request["device_id"]) != transport_identity:
-                raise DeviceError("The mouse USB location changed. Read this mouse again before applying.")
-            previous = decode_sensor_response(bytes.fromhex(baseline["raw"]), profile_index)
-            if previous.dpi_signature != before.dpi_signature:
-                raise DeviceError("The mouse settings changed since the last read. Read again before applying.")
-            settings = request["dpi"]
-            report = build_physical_dpi_report(profile_index=profile_index, **settings)
-            expected = (profile_index, settings["current_stage"], tuple(settings["dpi"]),
-                        tuple(tuple(c) for c in settings["colors"]), tuple(settings["enabled"]),
-                        settings["indicator_enabled"])
-            if before.dpi_signature != expected:
-                try:
-                    transport.send(report)
-                    after = read_sensor(transport, profile_index)
-                    if after.dpi_signature != expected:
-                        raise DeviceError("Mouse readback did not match the requested DPI settings")
-                    if (before.raw[4:9], before.raw[45:47]) != (after.raw[4:9], after.raw[45:47]):
-                        raise DeviceError("Unrelated sensor settings changed during the DPI update")
-                    before, changed = after, True
-                except (OSError, ValueError, DeviceError) as error:
-                    raise DeviceError(f"Apply could not be verified: {error}. The mouse may have changed; read it again.") from error
-        return {"raw": before.raw.hex(), "changed": changed,
-                "wireless": getattr(transport, "wireless", False),
-                "transport_identity": transport_identity,
-                "acknowledgements": transport.acknowledgements}
+        session = getattr(transport, "configuration_session", nullcontext)
+        with session():
+            return _transact_direct(request, transport, profile_index, host_lcd_request)
+
+
+def _transact_direct(request, transport, profile_index, host_lcd_request):
+    """Operations that do not already enter the settings transaction context."""
+    profile = profile_index + 1
+    if request["operation"] == "host_lcd":
+        from .host_lcd import update_host_lcd
+        return update_host_lcd(request, transport, _validated=host_lcd_request)
+    if request["operation"] == "read_status":
+        from .status_commands import build_status_read_request, decode_status_response
+        transport.send(build_status_read_request())
+        status = decode_status_response(transport.get_feature(0x09))
+        return {"firmware_version": status.firmware_version,
+                "firmware_catalog_version": status.firmware_catalog_version,
+                "firmware_numeric": status.firmware_numeric, "role": status.role,
+                "battery_percent": status.battery_percent, "charging": status.charging}
+    if request["operation"] == "upload_background":
+        from .background import upload_background
+        return upload_background(request, transport)
+    transport_identity = str(getattr(transport, "location_id", request["device_id"]))
+    before = read_sensor(transport, profile_index)
+    changed = False
+    if request["operation"] == "apply":
+        baseline = request.get("baseline")
+        if not isinstance(baseline, dict) or baseline.get("device_id") != request["device_id"] or baseline.get("profile_slot") != profile:
+            raise DeviceError("Read this mouse and profile before applying settings")
+        if baseline.get("transport_identity", request["device_id"]) != transport_identity:
+            raise DeviceError("The mouse USB location changed. Read this mouse again before applying.")
+        previous = decode_sensor_response(bytes.fromhex(baseline["raw"]), profile_index)
+        if previous.dpi_signature != before.dpi_signature:
+            raise DeviceError("The mouse settings changed since the last read. Read again before applying.")
+        settings = request["dpi"]
+        report = build_physical_dpi_report(profile_index=profile_index, **settings)
+        expected = (profile_index, settings["current_stage"], tuple(settings["dpi"]),
+                    tuple(tuple(c) for c in settings["colors"]), tuple(settings["enabled"]),
+                    settings["indicator_enabled"])
+        if before.dpi_signature != expected:
+            try:
+                transport.send(report)
+                after = read_sensor(transport, profile_index)
+                if after.dpi_signature != expected:
+                    raise DeviceError("Mouse readback did not match the requested DPI settings")
+                if (before.raw[4:9], before.raw[45:47]) != (after.raw[4:9], after.raw[45:47]):
+                    raise DeviceError("Unrelated sensor settings changed during the DPI update")
+                before, changed = after, True
+            except (OSError, ValueError, DeviceError) as error:
+                raise DeviceError(f"Apply could not be verified: {error}. The mouse may have changed; read it again.") from error
+    return {"raw": before.raw.hex(), "changed": changed,
+            "wireless": getattr(transport, "wireless", False),
+            "transport_identity": transport_identity,
+            "acknowledgements": transport.acknowledgements}
 
 
 def main():
