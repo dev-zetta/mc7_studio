@@ -44,11 +44,11 @@ class DeviceService:
             accessible = (device.device_node_writable and len(events) == 1
                           and events[0].device_node_readable)
             result.append({
-                "id": physical_id(device), "label": f"Command Series MC7 · {'USB mouse' if mouse else 'transmitter'}",
+                "id": physical_id(device), "label": f"Command Series MC7 · {'USB mouse' if mouse else '2.4 GHz wireless'}",
                 "product_id": device.product_id, "connected": True,
-                "capabilities": CAPABILITIES[:] if mouse and accessible else [],
+                "capabilities": CAPABILITIES[:] if accessible else [],
                 "detail": ("Native sensor, buttons, lighting, display and power settings" if accessible and mouse else
-                           "Connect the mouse directly by USB to configure it" if not mouse else
+                           "2.4 GHz receiver; keep the mouse awake in wireless mode. Firmware installation requires a direct USB cable." if accessible else
                            "Raw HID access is unavailable; open Device > Host integration and install the MC7 udev rule"),
             })
         return sorted(result, key=lambda d: (d["product_id"], d["id"]))
@@ -108,12 +108,13 @@ class DeviceService:
         if extra:
             from .button_commands import BUTTON_SLOTS, decode_action
             from .settings import decode
-            states = {name: decode(name, bytes.fromhex(raw), profile_slot-1) for name, raw in extra.items()}
+            states = {name: decode(name, bytes.fromhex(raw), profile_slot-1,
+                                  lighting_format=result.get("lighting_format")) for name, raw in extra.items()}
             def field(section, name, value):
                 setattr(getattr(configuration, section), name, value)
                 verified.append(f"{section}.{name}")
             advanced = states["sensor"]
-            for attr, value in (("polling_rate", advanced.polling_rate_usb), ("motion_sync", advanced.motion_sync),
+            for attr, value in (("polling_rate", advanced.polling_rate_wireless if result.get("wireless") else advanced.polling_rate_usb), ("motion_sync", advanced.motion_sync),
                                 ("angle_snapping", advanced.angle_snapping), ("angle_tuning", advanced.angle_tuning),
                                 ("angle_tuning_enabled", advanced.angle_tuning_enabled),
                                 ("lift_off_distance", {0:"very_low",0x85:"low"}.get(advanced.lift_off_raw,"custom"))):
@@ -395,12 +396,14 @@ class DeviceService:
                 "summary": {"dpi": state.dpi[state.current_stage], "stage": state.current_stage + 1,
                             "profile": profile_slot, "active_profile": active_profile, "status": device_status,
                             "transport": ({"Darwin": "macOS HIDAPI · USB · experimental",
-                                           "Windows": "Windows HIDAPI · USB · experimental"}.get(platform.system(), "Linux hidraw · USB")),
+                                           "Windows": "Windows HIDAPI · USB · experimental"}.get(platform.system(),
+                                               "Linux hidraw · 2.4 GHz wireless" if result.get("wireless") else "Linux hidraw · USB")),
                             "read_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                             "changed": result["changed"],
                             "activation_acknowledged": result.get("activation_acknowledged", False),
                             "lcd_setup_verified": result.get("lcd_setup_verified", False)},
                 "baseline": {"device_id": device_id, "profile_slot": profile_slot,
+                             **({"lighting_format": result["lighting_format"]} if "lighting_format" in result else {}),
                              "raw": state.raw.hex(),
                              "transport_identity": result.get(
                                  "transport_identity", device_id),

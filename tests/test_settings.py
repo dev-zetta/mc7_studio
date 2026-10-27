@@ -12,6 +12,7 @@ from swarm2.configuration import Action
 from swarm2.hardware import transact
 from swarm2.service import DeviceService
 from swarm2.settings import REQUIRED, SELECTORS
+from swarm2.lighting_commands import RECEIVER_LIGHTING_FORMAT
 from swarm2.transport import DeviceError
 
 
@@ -190,6 +191,18 @@ class SettingsTransport:
         return self.records[name]
 
 
+class ReceiverSettingsTransport(SettingsTransport):
+    def __init__(self):
+        super().__init__()
+        self.wireless = True
+        self.records['lighting'] = bytes.fromhex('102a0000010fff0505000000e7')
+        self.records['status'] = bytes.fromhex('1009000905204019ff0b006f')
+
+    def get_feature(self, selector):
+        raw = super().get_feature(selector)
+        return raw[:12] if selector == 0x2A else raw
+
+
 class SettingsIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.transport = SettingsTransport()
@@ -206,6 +219,76 @@ class SettingsIntegrationTests(unittest.TestCase):
 
     def read(self):
         return self.service.read("fixture-mc7", 1)
+
+    def test_receiver_lighting_and_power_apply_preserve_layout_and_validate_readback(self):
+        self.transport = ReceiverSettingsTransport()
+        snapshot = self.read()
+        self.assertEqual(snapshot['errors'], {})
+        self.assertEqual(snapshot['baseline']['lighting_format'], RECEIVER_LIGHTING_FORMAT)
+        config = snapshot['configuration']
+        config.lighting.brightness = 60
+        config.lighting.color = '#123456'
+        result = self.service.apply_section('fixture-mc7', config, 'lighting', snapshot['baseline'])
+        self.assertTrue(result['summary']['changed'])
+        self.assertEqual(result['configuration'].lighting.color, '#123456')
+        self.assertEqual(result['baseline']['settings']['lighting'], '102a0000010f990505123456')
+        config = result['configuration']
+        config.power.led_timeout_value = 10
+        power = self.service.apply_section('fixture-mc7', config, 'power', result['baseline'])
+        self.assertTrue(power['summary']['changed'])
+        self.assertEqual(power['configuration'].power.led_timeout_value, 10)
+        self.assertEqual(power['configuration'].lighting.color, '#123456')
+
+    def test_receiver_prefix_is_not_accepted_without_radio_and_verified_509_status(self):
+        for wireless, firmware in ((False, 509), (True, 504), (True, 508)):
+            with self.subTest(wireless=wireless, firmware=firmware):
+                self.transport = ReceiverSettingsTransport()
+                self.transport.wireless = wireless
+                status = bytearray(self.transport.records['status'])
+                status[3] = firmware % 100
+                self.transport.records['status'] = with_checksum(status)
+                self.assertIn('lighting', self.read()['errors'])
+                self.assertEqual(self.transport.writes, [])
+
+    def test_receiver_prefix_blue_channel_change_blocks_a_stale_apply(self):
+        self.transport = ReceiverSettingsTransport()
+        snapshot = self.read()
+        changed = bytearray(self.transport.records['lighting'])
+        changed[11] = 1
+        self.transport.records['lighting'] = with_checksum(changed)
+        with self.assertRaisesRegex(DeviceError, 'lighting settings changed'):
+            self.service.apply_section('fixture-mc7', snapshot['configuration'], 'lighting', snapshot['baseline'])
+        self.assertEqual(self.transport.writes, [])
+
+    def test_receiver_prefix_requires_repeated_reads_to_agree(self):
+        self.transport = ReceiverSettingsTransport()
+        original = self.transport.get_feature
+        reads = 0
+        def get(selector):
+            nonlocal reads
+            raw = original(selector)
+            if selector == 0x2A:
+                reads += 1
+                if reads % 2 == 0:
+                    raw = raw[:-1] + bytes((raw[-1] ^ 1,))
+            return raw
+        self.transport.get_feature = get
+        snapshot = self.read()
+        self.assertIn('did not agree', snapshot['errors']['lighting'])
+        self.assertNotIn('lighting', snapshot['baseline']['settings'])
+        self.assertEqual(self.transport.writes, [])
+
+    def test_wireless_conflicting_power_modes_block_every_setting_write(self):
+        self.transport = ReceiverSettingsTransport()
+        snapshot = self.read()
+        config = snapshot['configuration']
+        config.power.eco_mode = config.power.energy_saving = True
+        config.power.led_timeout_value = 10
+        self.transport.sent.clear()
+        with self.assertRaisesRegex(DeviceError, 'Choose ECO mode or energy saving'):
+            self.service.apply_section('fixture-mc7', config, 'power', snapshot['baseline'])
+        self.assertEqual(self.transport.writes, [])
+        self.assertEqual(self.transport.sent, [])
 
     def test_full_read_maps_actual_records_into_verified_snapshot(self):
         snapshot = self.read()
@@ -271,6 +354,7 @@ class SettingsIntegrationTests(unittest.TestCase):
             "transport_identity": "fixture-usb-port",
             "changed": False,
             "acknowledgements": [],
+            "wireless": False,
         })
         self.assertEqual(self.helper_requests[-1], {
             "operation": "read_active_profile", "device_id": "fixture-mc7",
@@ -293,6 +377,19 @@ class SettingsIntegrationTests(unittest.TestCase):
                 self.assertFalse(result["summary"]["changed"])
                 self.assertEqual(result["baseline"]["settings"], CAPTURES)
                 self.assertEqual(self.transport.writes, [])
+
+    @patch('swarm2.service.platform.system', return_value='Linux')
+    def test_wireless_read_and_unchanged_apply_use_the_radio_polling_rate(self, _platform):
+        self.transport.wireless = True
+        raw = bytearray(self.transport.records['sensor'])
+        raw[4], raw[5] = 0, 2  # USB 1000 Hz, radio 4000 Hz.
+        self.transport.records['sensor'] = with_checksum(raw)
+        snapshot = self.read()
+        self.assertEqual(snapshot['configuration'].sensor.polling_rate, 4000)
+        self.assertIn('2.4 GHz wireless', snapshot['summary']['transport'])
+        result = self.service.apply('fixture-mc7', snapshot['configuration'], snapshot['baseline'])
+        self.assertFalse(result['summary']['changed'])
+        self.assertEqual(self.transport.writes, [])
 
     def test_stale_baseline_for_every_section_blocks_all_writes(self):
         mutations = {"sensor": ("sensor", 9, 3), "buttons": ("primary", 18, 8),

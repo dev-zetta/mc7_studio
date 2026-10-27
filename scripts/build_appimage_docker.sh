@@ -54,7 +54,7 @@ docker build \
     --tag "$image" \
     "$project_root"
 
-update_information=${UPDATE_INFORMATION:-gh-releases-zsync|dev-zetta|swarm2|latest|MC7-Studio-*-x86_64.AppImage.zsync}
+update_information=${UPDATE_INFORMATION:-gh-releases-zsync|dev-zetta|mc7_studio|latest|MC7-Studio-*-x86_64.AppImage.zsync}
 source_date_epoch=$(git -C "$project_root" log -1 --format=%ct)
 container=
 

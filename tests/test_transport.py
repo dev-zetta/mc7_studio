@@ -39,13 +39,17 @@ class InterfaceSelectionTests(unittest.TestCase):
         self.assertEqual(physical_id(control), "usb-fixture-1")
         self.assertEqual(self.select([other_events, events, control]), (control, events))
 
-    def test_refuses_ambiguous_missing_transmitter_or_wrong_descriptor_pairs(self):
+    def test_receiver_uses_its_own_matching_vendor_interfaces(self):
+        control, events = interface(2, product=0x502E), interface(1, product=0x502E)
+        self.assertEqual(self.select([control, events]), (control, events))
+
+    def test_refuses_ambiguous_missing_mixed_or_wrong_descriptor_pairs(self):
         cases = [
             [interface(2)],
             [interface(2), interface(1, port="usb-other")],
             [interface(2), interface(1), interface(1)],
             [interface(2), interface(2), interface(1)],
-            [interface(2, product=0x502E), interface(1, product=0x502E)],
+            [interface(2, product=0x502E), interface(1)],
             [interface(2), interface(1, length=64)],
             [interface(2, usage=2), interface(1)],
         ]
@@ -210,6 +214,97 @@ class AcknowledgementTests(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(DeviceError, "Incomplete sensor response|Invalid feature response length"):
                         self.transport.get_sensor()
+
+    def test_receiver_polls_past_previous_selector_and_empty_cache_without_sending(self):
+        self.transport.wireless = True
+        current = bytes.fromhex("10100000020200000002010700ff000001010f0000ff0001017a000064640101f9000000ff01015702e320ca018501f6")
+        replies = [bytes.fromhex("1012000005fb"), bytes.fromhex("100000000000"), current]
+        with patch.object(self.transport, '_get_feature_now', side_effect=replies) as get, \
+             patch.object(self.transport, 'send') as send, \
+             patch('swarm2.transport.time.sleep'):
+            self.assertEqual(self.transport.get_sensor(), current)
+        self.assertEqual(get.call_count, 3)
+        send.assert_not_called()
+
+    def test_receiver_wait_has_a_deadline_and_a_poll_count_limit(self):
+        self.transport.wireless = True
+        for times, expected in (([0, 3], 1), (None, 128)):
+            with self.subTest(times=times), \
+                 patch.object(self.transport, '_get_feature_now', return_value=b'\x10\0') as get, \
+                 patch('swarm2.transport.time.monotonic', side_effect=times, return_value=0), \
+                 patch('swarm2.transport.time.sleep'):
+                with self.assertRaisesRegex(DeviceError, 'wireless mouse'):
+                    self.transport.get_feature(0x10)
+            self.assertEqual(get.call_count, expected)
+
+    def test_receiver_does_not_hide_a_matching_but_corrupt_reply(self):
+        self.transport.wireless = True
+        with patch.object(self.transport, '_get_feature_now', return_value=b'\x10\x10\x01') as get, \
+             patch('swarm2.transport.time.sleep'):
+            self.assertEqual(self.transport.get_feature(0x10), b'\x10\x10\x01')
+        get.assert_called_once()
+
+    def test_receiver_discards_only_zero_lcd_padding(self):
+        self.transport.wireless = True
+        for selector, length in ((0x25, 61), (0x29, 54)):
+            record = bytes((0x10, selector)) + bytes(length - 2)
+            for tail, accepted in ((bytes(64 - length), True), (bytes(63 - length) + b'\x01', False)):
+                with self.subTest(selector=selector, accepted=accepted), \
+                     patch.object(self.transport, '_get_feature_now', return_value=record + tail), \
+                     patch('swarm2.transport.time.sleep'):
+                    if accepted:
+                        self.assertEqual(self.transport.get_feature(selector), record)
+                    else:
+                        with self.assertRaisesRegex(DeviceError, 'Unexpected data'):
+                            self.transport.get_feature(selector)
+
+    def test_receiver_reporting_pause_and_resume_match_ack_and_rate_event(self):
+        self.transport.wireless = True
+        for enabled in (False, True):
+            incoming = [b'', acknowledgement(2, command=0x0F, discriminator=6),
+                        acknowledgement(command=0x0F, discriminator=6)]
+            if enabled:
+                incoming.append(bytes.fromhex('1000050500000000'))
+            with self.subTest(enabled=enabled), \
+                 patch.object(self.transport, 'write_feature', return_value=64) as write, \
+                 patch.object(self.transport, 'read_event', side_effect=incoming), \
+                 patch('swarm2.transport.time.sleep'):
+                self.transport._set_receiver_reporting(enabled)
+            write.assert_called_once_with(bytes((0x10,0x0F,7 if enabled else 0))+bytes(61))
+
+    def test_receiver_reporting_rejects_partial_send_and_missing_rate_event_without_replay(self):
+        self.transport.wireless = True
+        with patch.object(self.transport, 'write_feature', return_value=63) as write, \
+             patch.object(self.transport, 'read_event', return_value=b''):
+            with self.assertRaisesRegex(DeviceError, 'Incomplete receiver'):
+                self.transport._set_receiver_reporting(False)
+            write.assert_called_once()
+        with patch.object(self.transport, 'write_feature', return_value=64) as write, \
+             patch.object(self.transport, 'read_event', side_effect=[b'']+[acknowledgement(command=0x0F,discriminator=6)]*128), \
+             patch('swarm2.transport.time.monotonic', return_value=0):
+            with self.assertRaisesRegex(DeviceError, 'rate event timed out'):
+                self.transport._set_receiver_reporting(True)
+            write.assert_called_once()
+
+    def test_receiver_configuration_restores_reporting_after_start_or_operation_failure(self):
+        self.transport.wireless = True
+        for start_failure in (False, True):
+            def set_reporting(enabled):
+                if not enabled and start_failure:
+                    raise DeviceError('Pause failed')
+            with self.subTest(start_failure=start_failure), \
+                 patch.object(self.transport, '_set_receiver_reporting', side_effect=set_reporting) as reporting:
+                with self.assertRaises(DeviceError):
+                    with self.transport.configuration_session():
+                        raise DeviceError('Operation failed')
+            self.assertEqual([call.args[0] for call in reporting.call_args_list],[False,True])
+
+    def test_usb_configuration_never_sends_receiver_reporting_commands(self):
+        self.transport.wireless = False
+        with patch.object(self.transport, '_set_receiver_reporting') as reporting:
+            with self.transport.configuration_session():
+                pass
+        reporting.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ class FirmwareTransportTests(unittest.TestCase):
                 validate_cfu_descriptor(malformed)
 
     def test_normal_session_lock_is_retained_and_closed_after_descriptor_failure(self):
-        ordinary = Mock()
+        ordinary = Mock(wireless=False)
         ordinary.__enter__ = Mock(return_value=ordinary)
         ordinary.__exit__ = Mock()
         with patch("swarm2.firmware_transport.platform.system", return_value="Linux"), \
@@ -40,6 +40,7 @@ class FirmwareTransportTests(unittest.TestCase):
             factory.assert_called_once_with("fixture-port")
             ordinary.__enter__.assert_called_once_with()
             ordinary.__exit__.assert_called_once()
+
             self.assertIsNone(transport.normal)
         ordinary.__exit__.reset_mock()
         with patch("swarm2.firmware_transport.platform.system", return_value="Linux"), \
@@ -49,6 +50,19 @@ class FirmwareTransportTests(unittest.TestCase):
                 with FirmwareTransport("fixture-port"):
                     self.fail("An invalid descriptor must not open a firmware session")
             ordinary.__exit__.assert_called_once()
+
+    def test_receiver_is_closed_before_any_firmware_access(self):
+        ordinary = Mock(wireless=True)
+        ordinary.__enter__ = Mock(return_value=ordinary)
+        ordinary.__exit__ = Mock()
+        with patch('swarm2.firmware_transport.platform.system', return_value='Linux'), \
+             patch('swarm2.firmware_transport.HidrawTransport', return_value=ordinary), \
+             patch.object(FirmwareTransport, '_descriptor') as descriptor:
+            with self.assertRaisesRegex(DeviceError, 'directly by USB'):
+                with FirmwareTransport('receiver'):
+                    self.fail('A receiver must not enter a firmware session')
+        descriptor.assert_not_called()
+        ordinary.__exit__.assert_called_once()
 
     def test_linux_version_get_uses_control_handle_and_max_feature_length(self):
         for reply in (VERSION, VERSION + bytes(3)):

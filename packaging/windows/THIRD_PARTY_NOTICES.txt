@@ -6,4 +6,4 @@ The executable uses the PyInstaller bootloader and runtime hooks under the terms
 
 MC7 Studio is independent software. Turtle Beach firmware is not included in this package.
 
-The matching Qt Base, Qt SVG, PySide6/Shiboken6, HIDAPI, PyInstaller and 7-Zip sources accompany the release in MC7-Studio-0.1.0-corresponding-sources.tar.gz. The graphical executable uses a separate console helper for device operations; keep MC7-Studio-CLI.exe alongside MC7-Studio.exe.
+The matching Qt Base, Qt SVG, PySide6/Shiboken6, HIDAPI, PyInstaller and 7-Zip sources accompany each release in its MC7-Studio-<version>-corresponding-sources.tar.gz archive. The graphical executable uses a separate console helper for device operations; keep MC7-Studio-CLI.exe alongside MC7-Studio.exe.

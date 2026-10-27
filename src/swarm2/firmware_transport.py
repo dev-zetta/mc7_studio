@@ -43,6 +43,8 @@ class FirmwareTransport:
             raise DeviceError("MC7 firmware access requires Linux or macOS")
         self.normal = normal.__enter__()
         try:
+            if getattr(self.normal, "wireless", False):
+                raise DeviceError("Firmware access requires the mouse connected directly by USB; wireless firmware updates are unavailable")
             validate_cfu_descriptor(self._descriptor())
             return self
         except BaseException:

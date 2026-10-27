@@ -1,8 +1,8 @@
 """MC7 lighting records and source-traced effect IDs, without device I/O.
 
-Firmware 5.04 returns a compact 12-byte record. Firmware 5.09 returns the
-13-byte layout used by COMMAND_MC7.dll 0.0.0.7. Both layouts are retained
-exactly so a write cannot shift an opaque or version-specific field.
+Firmware 5.04 returns a compact 12-byte record. Firmware 5.09 returns a
+13-byte record over USB; some receivers relay its 12 setting bytes without
+the checksum. Receiver format selection requires explicit transport evidence.
 """
 
 from dataclasses import dataclass
@@ -15,6 +15,7 @@ from .protocol import ProtocolError, REPORT_BYTES
 LIGHTING_COMMAND = 0x2A
 LIGHTING_COMPACT_RESPONSE_BYTES = 12
 LIGHTING_EXTENDED_RESPONSE_BYTES = 13
+RECEIVER_LIGHTING_FORMAT = "receiver-extended-prefix-v1"
 LIGHTING_EFFECT_IDS = MappingProxyType({
     "off": 0,
     "static": 1,
@@ -35,7 +36,7 @@ def _integer(name: str, value: int, minimum: int, maximum: int) -> int:
 
 @dataclass(frozen=True)
 class LightingState:
-    """An exact, checksum-validated lighting record from either firmware."""
+    """Exact setting bytes; receiver prefixes explicitly lack a checksum."""
 
     raw: bytes
     profile_index: int
@@ -45,6 +46,7 @@ class LightingState:
     effect_id: int
     speed: int
     color: tuple[int, int, int]
+    receiver_prefix: bool = False
 
     @property
     def effect(self) -> str | None:
@@ -78,7 +80,7 @@ def build_lighting_get_buffer() -> bytes:
     return bytes((0x10, LIGHTING_COMMAND)) + bytes(REPORT_BYTES - 2)
 
 
-def decode_lighting_response(data: bytes, profile_index: int) -> LightingState:
+def decode_lighting_response(data: bytes, profile_index: int, *, receiver_prefix=False) -> LightingState:
     """Decode a firmware 5.04 compact or firmware 5.09 extended record.
 
     A 64-byte transport buffer is accepted only when its unused tail is zero.
@@ -88,10 +90,19 @@ def decode_lighting_response(data: bytes, profile_index: int) -> LightingState:
     Unknown effects and speed values remain visible as their original bytes.
     """
     profile = _integer("profile_index", profile_index, 0, 4)
+    if type(receiver_prefix) is not bool:
+        raise ProtocolError("receiver_prefix must be a boolean")
     if not isinstance(data, (bytes, bytearray)) or len(data) not in (
             LIGHTING_COMPACT_RESPONSE_BYTES, LIGHTING_EXTENDED_RESPONSE_BYTES, REPORT_BYTES):
         raise ProtocolError("lighting response must contain 12, 13 or 64 bytes")
     length = len(data)
+    if receiver_prefix:
+        if length != 12 or data[:4] != bytes((0x10, LIGHTING_COMMAND, 0, profile)):
+            raise ProtocolError("Wireless lighting prefix length, identity, status or profile does not match")
+        if data[4] not in (0, 1):
+            raise ProtocolError("Wireless lighting prefix contains an unknown enable value")
+        return LightingState(bytes(data), profile, data[4], data[5], data[6],
+                             data[7], data[8], tuple(data[9:12]), receiver_prefix=True)
     if length == REPORT_BYTES:
         if any(data[LIGHTING_EXTENDED_RESPONSE_BYTES:]):
             raise ProtocolError("lighting response contains data beyond the supported layouts")
@@ -146,7 +157,8 @@ def build_lighting_report(state: LightingState, *, effect: str | None = None,
     """
     if not isinstance(state, LightingState):
         raise ProtocolError("a lighting response baseline is required")
-    validated = decode_lighting_response(state.raw, state.profile_index)
+    validated = decode_lighting_response(state.raw, state.profile_index,
+                                         receiver_prefix=state.receiver_prefix)
     if state != validated:
         raise ProtocolError("lighting baseline fields do not match its response bytes")
     shift = int(state.extended_layout)
@@ -187,14 +199,17 @@ def expected_lighting_state(report: bytes, baseline: LightingState) -> LightingS
         raise ProtocolError("lighting write report must contain exactly 64 bytes")
     if not isinstance(baseline, LightingState):
         raise ProtocolError("a lighting response baseline is required")
-    checked = decode_lighting_response(baseline.raw, baseline.profile_index)
+    checked = decode_lighting_response(baseline.raw, baseline.profile_index,
+                                       receiver_prefix=baseline.receiver_prefix)
     if baseline != checked:
         raise ProtocolError("lighting baseline fields do not match its response bytes")
-    payload_end = len(baseline.raw) - 1
+    payload_end = len(baseline.raw) - (not baseline.receiver_prefix)
     if (report[:2] != bytes((0x10, LIGHTING_COMMAND)) or report[2] != baseline.profile_index
             or report[3] != 1 or any(report[payload_end:])):
         raise ProtocolError("unrecognized lighting write report")
-    raw = bytearray(report[:payload_end]) + bytearray(1)
+    raw = bytearray(report[:payload_end])
     raw[2:4] = bytes((0, baseline.profile_index))
-    raw[-1] = (-sum(raw[2:-1])) & 255
-    return decode_lighting_response(bytes(raw), baseline.profile_index)
+    if not baseline.receiver_prefix:
+        raw.append((-sum(raw[2:])) & 255)
+    return decode_lighting_response(bytes(raw), baseline.profile_index,
+                                    receiver_prefix=baseline.receiver_prefix)

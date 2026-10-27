@@ -146,6 +146,31 @@ class GuiTests(unittest.TestCase):
         self.window.read_mouse()
         self.wait_for_job()
 
+    def test_failed_lighting_read_blocks_lighting_and_power_but_not_sensor(self):
+        self.read()
+        self.window.snapshot['errors'] = {'lighting': 'lighting response checksum does not match'}
+        for page, enabled in ((1, True), (3, False), (7, False)):
+            with self.subTest(page=page):
+                self.window.navigation.setCurrentRow(page)
+                self.window._update_capabilities()
+                self.assertEqual(self.window.apply_button.isEnabled(), enabled)
+        self.assertIn('directly by USB', self.window.apply_button.toolTip())
+
+    def test_wireless_power_conflict_disables_apply_until_user_chooses_one_mode(self):
+        self.read()
+        self.window.devices[0]['product_id'] = 0x502E
+        self.window.navigation.setCurrentRow(7)
+        self.window.eco_mode_control.setChecked(True)
+        self.assertTrue(self.window.apply_button.isEnabled())
+        self.window.energy_saving_control.setChecked(True)
+        self.assertFalse(self.window.apply_button.isEnabled())
+        self.assertIn('Choose ECO mode or energy saving', self.window.apply_button.toolTip())
+        self.window.eco_mode_control.setChecked(False)
+        self.assertTrue(self.window.apply_button.isEnabled())
+        self.window.devices[0]['product_id'] = 0x502C
+        self.window.eco_mode_control.setChecked(True)
+        self.assertTrue(self.window.apply_button.isEnabled())
+
     def test_timeout_controls_show_minutes_without_changing_wire_values(self):
         self.assertEqual(
             [self.window.screen_timeout.itemData(index)

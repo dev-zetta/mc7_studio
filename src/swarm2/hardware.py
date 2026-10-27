@@ -54,7 +54,9 @@ def transact(request, transport_factory=None):
             return upload_background(request, transport)
         if request["operation"] not in ("read", "apply"):
             from .settings import transact_settings
-            return transact_settings(request, transport)
+            result = transact_settings(request, transport)
+            result["wireless"] = getattr(transport, "wireless", False)
+            return result
         transport_identity = str(getattr(transport, "location_id", request["device_id"]))
         before = read_sensor(transport, profile_index)
         changed = False
@@ -84,6 +86,7 @@ def transact(request, transport_factory=None):
                 except (OSError, ValueError, DeviceError) as error:
                     raise DeviceError(f"Apply could not be verified: {error}. The mouse may have changed; read it again.") from error
         return {"raw": before.raw.hex(), "changed": changed,
+                "wireless": getattr(transport, "wireless", False),
                 "transport_identity": transport_identity,
                 "acknowledgements": transport.acknowledgements}
 

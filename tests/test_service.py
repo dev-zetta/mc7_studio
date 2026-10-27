@@ -6,9 +6,23 @@ from swarm2.host_metrics import GpuSource, HostMetrics
 from swarm2.host_media import MediaPlayerInfo
 from swarm2.service import DeviceService
 from swarm2.transport import DeviceError
+from swarm2.devices import Enumeration
+from tests.test_transport import interface
 
 
 class ServiceTests(unittest.TestCase):
+    def test_linux_receiver_is_configurable_only_with_accessible_matching_events(self):
+        control, events = interface(2, product=0x502E), interface(1, product=0x502E)
+        control.device_node_writable = events.device_node_readable = True
+        for candidates, supported in (([control, events], True), ([control], False)):
+            with self.subTest(supported=supported), \
+                 patch('swarm2.service.platform.system', return_value='Linux'), \
+                 patch('swarm2.service.enumerate_devices', return_value=Enumeration('sysfs', candidates)):
+                device, = DeviceService().discover()
+            self.assertEqual(device['product_id'], 0x502E)
+            self.assertIn('2.4 GHz', device['label'])
+            self.assertEqual('read_settings' in device['capabilities'], supported)
+
     def test_apply_timeout_and_helper_crash_report_uncertain_state(self):
         for result in ("invalid JSON", "null", "[]", "{}"):
             with self.subTest(result=result), patch("swarm2.service.platform.system", return_value="Linux"), patch("swarm2.service.subprocess.run", return_value=subprocess.CompletedProcess([], 1, result, "")):

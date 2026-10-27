@@ -1,167 +1,141 @@
 # MC7 Studio
 
-MC7 Studio is an independent desktop configurator for the **Turtle Beach Command Series MC7** mouse. It provides a native Qt interface for Linux, macOS and Windows, so the mouse can be configured without relying on Turtle Beach Swarm II.
+**Configure your Turtle Beach Command Series MC7 on Linux, macOS and Windows.** MC7 Studio is an independent, native desktop application for onboard profiles, sensor settings, buttons, macros, lighting and the mouse's touch display.
 
-The Linux implementation has been tested with a directly connected MC7 running firmware 5.09. The macOS and Windows applications and USB backends are included, but still need physical-device testing.
+[Download 0.2.0](https://github.com/dev-zetta/mc7_studio/releases/tag/v0.2.0) · [Getting started](docs/getting-started.md) · [User guide](docs/user-guide.md) · [Report a problem](https://github.com/dev-zetta/mc7_studio/issues)
 
-MC7 Studio is independent software and is not affiliated with or endorsed by Turtle Beach.
+<p align="center"><a href="https://www.turtlebeach.com/products/command-series-mc7-mouse"><img src="https://cdn.shopify.com/s/files/1/0556/5795/5430/files/2_TB_TB_Command_Series_MC7_DTC_2400x1350_464a7baa-f695-41da-ab94-2ba9b2b8b666.png?v=1776360347&amp;width=1200" width="800" alt="Turtle Beach Command Series MC7 mouse with its touch display"></a></p>
 
-![MC7 Studio sensitivity editor](docs/images/mc7-studio.png)
+*Command Series MC7 product image © Turtle Beach, linked from its [official product page](https://www.turtlebeach.com/products/command-series-mc7-mouse). MC7 Studio is not affiliated with or endorsed by Turtle Beach.*
+
+![MC7 Studio showing settings read from a connected mouse](docs/images/mc7-studio.png)
+
+*The native MC7 Studio interface. Read settings from the mouse, edit a local draft, then apply the page you changed.*
+
+<details><summary>See the sensitivity editor</summary>
+
+![MC7 Studio sensitivity editor with five DPI stages](docs/images/mc7-studio-sensitivity.png)
+
+</details>
+
+## What’s new in 0.2
+
+- **Linux 2.4 GHz wireless configuration:** select the USB receiver and configure the mouse without its cable.
+- **Wireless lighting and power controls:** receiver-specific lighting records are handled explicitly, with repeated-read and write/readback verification.
+- **Reliable wireless replies:** wait for the requested record instead of accepting a previous response from the receiver's cache.
+- **Clear connection status:** the application identifies wired and 2.4 GHz connections and displays the polling rate for the current connection.
+- **Safer partial reads:** Apply is disabled on a page when its required settings could not be read.
+- **Wireless power-mode protection:** choose ECO mode or energy saving; the application blocks their conflicting combination before sending any HID report.
 
 ## Features
 
-- **Five onboard profiles** with explicit profile activation
-- **Portable local presets** with names, colors, images, import and export
-- **Sensitivity controls** for five DPI stages from 50 to 30,000 DPI, polling rate, Motion Sync, debounce, angle snapping and angle tuning
-- **Guided calibration** for comfortable DPI, pointer angle and lift-off distance
-- **Button remapping** on the standard and Easy-Shift layers
-- **Easy-Aim and Easy-Wheel** actions, keyboard shortcuts, media controls, profile controls and mouse actions
-- **Macro editor and recorder** with keyboard and mouse events, delays and Once, Repeat, While held or Toggle playback
-- **Lighting controls** for color, brightness, speed and the MC7 effects
-- **LCD editor** for three pages with four slots per page
-- **LCD controls** for DPI, lighting, media, keys, shortcuts, macros, countdowns and system monitoring
-- **Host-assisted LCD actions** for applications, websites, files, folders, OBS, screenshots, OBS Studio Mode and desktop media players
-- **Custom LCD backgrounds and application icons** from PNG or JPEG files
-- **Display settings** for brightness, timeout and haptic feedback
-- **Battery and firmware status**, optional tray monitoring and low-battery notifications
-- **Automatic profiles** based on the foreground application on supported desktops
-- **In-app host setup** for Linux USB permissions, GNOME Wayland support and start at login
-- **Official firmware package downloads**, guarded update preparation and settings-backup restoration
+- **Profiles and presets:** five onboard profiles, profile activation, named local presets, colors, images, import and export.
+- **Sensor controls:** five DPI stages from 50 to 30,000 DPI, polling rate, Motion Sync, debounce, angle snapping and angle tuning, plus guided calibration.
+- **Buttons and macros:** standard and Easy-Shift layers, Easy-Aim, Easy-Wheel, keyboard shortcuts, media controls, and keyboard/mouse macros with Once, Repeat, While held and Toggle playback.
+- **Lighting and power:** RGB effects, colors, brightness and speed; LED timeout, standby, ECO mode and energy saving.
+- **Touch display:** three pages of four slots, DPI and media tiles, shortcuts, countdowns, system values, custom PNG/JPEG backgrounds, application icons, brightness, timeout and haptic feedback.
+- **Desktop integrations:** foreground-application profiles, application/file/website launchers, desktop media control, OBS actions, battery monitoring, tray notifications and supported start-at-login setup.
+- **Firmware tools:** installed firmware status, verified official package downloads, guarded upgrade preparation and readable-settings backup restoration.
 
-## Platform support
+## Download
 
-| Platform | Status |
-| --- | --- |
-| Linux | USB configuration and readback tested on firmware 5.09. X11, GNOME Wayland, Sway and Hyprland automatic-profile providers are available. |
-| macOS | Desktop interface and non-exclusive HID backend are implemented. Physical MC7 configuration and firmware updating have not been validated. |
-| Windows | Portable desktop application, HID configuration, automatic profiles and OBS integration are implemented. Physical MC7 configuration and firmware updating have not been validated. |
+Get the application and adjacent checksum from [GitHub Releases](https://github.com/dev-zetta/mc7_studio/releases/latest).
 
-Only the Command Series MC7 is supported. The mouse must be connected directly by USB for configuration and supported firmware workflows. Receiver, wireless and Bluetooth configuration are not implemented.
+| Platform | Package | Requirements |
+| --- | --- | --- |
+| Linux | `MC7-Studio-0.2.0-x86_64.AppImage` | x86_64, glibc 2.35 or newer, graphical desktop |
+| Windows | `MC7-Studio-0.2.0-windows-x86_64.zip` | 64-bit Windows 10 or newer |
+| macOS | `MC7-Studio-0.2.0-macos-arm64.zip` | Apple Silicon M1 or newer, macOS 13 or newer |
+| Python installation | Wheel or source archive | Python 3.10 or newer; install the `[gui]` extra |
 
-## Install
+The portable packages include Python, Qt, HIDAPI, 7-Zip and the application dependencies. Windows packages are unsigned; the macOS app is ad-hoc signed and is not Apple notarized.
 
-Download the first release from [GitHub Releases](https://github.com/dev-zetta/swarm2/releases/latest). The AppImage is the preferred release for Linux. Portable ZIPs are provided for 64-bit Windows and Apple Silicon Macs (M1 and newer, macOS 13 or newer). The release wheel and source installation support Linux, macOS and Windows and require Python 3.10 or newer.
-
-### Windows x86_64 portable application
-
-Download `MC7-Studio-0.1.0-windows-x86_64.zip` and its `.sha256` file from the release. Verify the SHA-256 value, extract the complete archive to a permanent folder, and run `MC7-Studio.exe`. Windows may show an unrecognized-publisher warning because the first release is not code signed.
-
-The portable application contains Python, Qt, HIDAPI, 7-Zip and the desktop dependencies. Keep `MC7-Studio-CLI.exe` and the `_internal` directory beside the GUI executable; the app uses them for device operations. It does not install a driver or replace Swarm II. Close Swarm II before accessing the mouse because only one configurator should own the MC7 vendor interfaces at a time.
-
-### macOS Apple Silicon (M1 and newer)
-
-Download `MC7-Studio-0.1.0-macos-arm64.zip` and its `.sha256` file from the release. Verify it with `shasum -a 256 -c MC7-Studio-0.1.0-macos-arm64.zip.sha256`, extract the ZIP in Finder, and move **MC7 Studio.app** to **Applications** before opening it.
-
-The app includes Python, Qt, HIDAPI, 7-Zip and its other desktop dependencies. It requires macOS 13 or newer and runs natively on Apple Silicon. The first release uses ad-hoc signing and is not Apple notarized; if macOS blocks it, review the download and use **System Settings → Privacy & Security → Open Anyway**. Physical MC7 acceptance on macOS remains pending.
-
-### Linux x86_64 AppImage (recommended)
-
-Download the AppImage and its `.sha256` file from the release, verify it, move it to a permanent location, make it executable and run it:
+### Linux AppImage
 
 ```sh
-sha256sum -c MC7-Studio-0.1.0-x86_64.AppImage.sha256
+sha256sum -c MC7-Studio-0.2.0-x86_64.AppImage.sha256
 mkdir -p "$HOME/Applications"
-mv MC7-Studio-0.1.0-x86_64.AppImage "$HOME/Applications/"
-chmod +x "$HOME/Applications/MC7-Studio-0.1.0-x86_64.AppImage"
-"$HOME/Applications/MC7-Studio-0.1.0-x86_64.AppImage"
+mv MC7-Studio-0.2.0-x86_64.AppImage "$HOME/Applications/"
+chmod +x "$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
+"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
 ```
 
-The AppImage includes the application runtime, Qt, HIDAPI, `7zz`, `libusb` and the certificate trust store used for HTTPS downloads. It does not require a Python environment or system 7-Zip and libusb packages. Linux still needs the udev rule described under [First use](#first-use).
+Open **Device → Check and install host integration…** to install the USB access rule, then reconnect the mouse or receiver. Run the application as your normal desktop user.
 
-MC7 Studio does not replace the AppImage silently. Download a newer release manually or use an AppImage update tool with the release's `.zsync` metadata. Move the AppImage to its permanent path before enabling start at login; if its path changes during an update, launch the new file and update the start-at-login entry from **Device → Check and install host integration…**.
+### Windows and macOS
 
-### Release wheel on Linux, macOS or Windows
+On Windows, verify the ZIP's SHA-256 checksum, extract the entire archive to a permanent folder and run `MC7-Studio.exe`. Keep `MC7-Studio-CLI.exe` and `_internal` beside it; device operations use the console helper.
 
-Download the `.whl` file from the release, then install it in a virtual environment:
+On macOS, verify the ZIP with `shasum -a 256 -c MC7-Studio-0.2.0-macos-arm64.zip.sha256`, extract it in Finder and move **MC7 Studio.app** to **Applications**. If macOS blocks the first launch, review the download and use **System Settings → Privacy & Security → Open Anyway**.
+
+## Connect and configure
+
+1. Connect the mouse directly by USB, or connect its 2.4 GHz receiver on Linux and wake the mouse in wireless mode.
+2. Choose **Device → Refresh devices**, then select the wired mouse or wireless receiver.
+3. Select an onboard profile and choose **Read mouse**.
+4. Edit a settings page and choose its **Apply** button. The application checks for conflicting changes and verifies the result by reading it back.
+5. Use **Save preset** to keep a local copy of your configuration. Saving a preset and applying settings to the mouse are separate actions.
+
+Sensitivity, button assignments, supported macros, lighting, LCD layout and power settings are stored on the mouse. Host-assisted LCD actions, countdowns, live system values and automatic profiles need MC7 Studio running; see [Desktop integrations](docs/integrations.md).
+
+## Connection and platform support
+
+| Connection | Linux | Windows | macOS |
+| --- | --- | --- | --- |
+| Direct USB mouse | Hardware tested on firmware 5.09 | Implemented; physical hardware acceptance pending | Implemented; physical hardware acceptance pending |
+| 2.4 GHz receiver | Supported in 0.2 | Unavailable | Unavailable |
+| Bluetooth | Unavailable | Unavailable | Unavailable |
+
+Only the Command Series MC7 is supported. Wireless feature validation is less complete than wired validation; custom calibration, image transfers, long-running LCD services and 8 kHz behavior have not completed wireless hardware acceptance. Use a direct USB connection for those workflows and firmware operations. Close Swarm II and other configurators before opening a device session.
+
+On 2.4 GHz, enable **ECO mode or energy saving**, one at a time. With mouse firmware 5.09 and receiver firmware 5.02, enabling both keeps pointer input working but disconnects configuration access. MC7 Studio disables Apply for that combination and rejects it before any HID report is sent. Use USB if you need both enabled.
+
+Automatic foreground profiles support X11, GNOME Wayland with the bundled companion, Sway, Hyprland, macOS and Windows. KDE Plasma and other Wayland compositors are not supported. Start-at-login setup is available on Linux and macOS. Windows desktop media playback-state control and per-application audio volume remain unavailable.
+
+## Firmware and recovery
+
+The Linux updater has completed an official mouse firmware upgrade from 5.04 to 5.09. Firmware installation requires a direct USB cable. Windows supports package download and inspection; installation is disabled. Downgrade, transmitter flashing, interrupted-update recovery and macOS firmware installation remain unvalidated.
+
+A settings backup is not a firmware image and cannot preserve custom LCD image pixels. Keep original images and exported presets. Read [Firmware and recovery](docs/firmware.md) before updating.
+
+## Documentation and diagnostics
+
+- [Getting started](docs/getting-started.md)
+- [User guide](docs/user-guide.md)
+- [Desktop integrations](docs/integrations.md)
+- [Firmware and recovery](docs/firmware.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
+The AppImage also accepts diagnostic commands:
 
 ```sh
-python3 -m venv ~/.local/share/mc7-studio/venv
-~/.local/share/mc7-studio/venv/bin/python -m pip install '/path/to/swarm2_mc7-0.1.0-py3-none-any.whl[gui]'
-~/.local/share/mc7-studio/venv/bin/swarm2-gui
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage doctor
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage devices
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage read --profile 1 --json
 ```
 
-On Windows, use `mc7-studio\Scripts\swarm2-gui.exe`; on macOS and Linux, the executables are in the environment's `bin` directory. AppImage files run only on Linux.
+Wheel and source installations provide the same commands through `swarm2`. If multiple accessible mice are present, use `read --device` with the physical ID shown by the application. Discovery and `doctor` do not open HID handles or change mouse settings.
 
-### From a source checkout
+## Install from source
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[gui]'
+.venv/bin/python -m pip install '.[gui]'
 .venv/bin/swarm2-gui
 ```
 
-To build the same Ubuntu 22.04 AppImage used by GitHub Actions, install Docker and run `scripts/build_appimage_docker.sh`. The script builds the pinned toolchain image, validates the packaging inputs and writes the AppImage, component inventory, update metadata and checksums to `dist/appimage`. Pass `--build-release` to also build the wheel, source distribution, firmware provenance and the verified corresponding-source archive published with tagged releases.
+Wine and Ghidra are not needed to install, build or use MC7 Studio.
 
-Windows and macOS builds run natively in GitHub Actions. To build locally, install `packaging/windows/requirements-build.txt` and run `python scripts/build_windows.py` on Windows x86_64 or `python scripts/build_macos.py` on an Apple Silicon Mac. The builders check GUI startup, the HIDAPI entry points, helper communication, image formats and bundled 7-Zip without changing a mouse.
+## Build the portable packages
 
-Wine and Ghidra are not required to install or use MC7 Studio.
-
-See [Getting started](docs/getting-started.md) for Linux prerequisites, USB access setup and the first configuration.
-
-## First use
-
-1. Connect the mouse directly by USB and open MC7 Studio.
-2. On Linux, open **Device → Check and install host integration…** and install the USB access rule if it is missing. Reconnect the mouse afterward.
-3. Select the mouse and the desired profile slot.
-4. Choose **Read mouse** before editing. The initial values shown by a new installation are editor defaults.
-5. Make changes on one page and choose that page's **Apply** button. MC7 Studio checks the current state and reads the result back.
-6. Choose **Save preset** if you also want a reusable copy on the computer.
-
-Saving a preset does not change the mouse. Applying a page does not save the whole local preset.
-
-## Onboard and host-assisted features
-
-Sensitivity, button assignments, lighting, supported macros, LCD layout and power settings are stored on the mouse and remain available after MC7 Studio closes.
-
-Countdowns, live system values, desktop media control, application and file launching, OBS screenshots and OBS Studio Mode need MC7 Studio's LCD action listener while they are in use. Enable **Listen for timer, media and launch taps on the mouse** on the Display page after applying those tiles. The listener temporarily owns the mouse connection, so stop it before applying settings or updating firmware.
-
-Read the [User guide](docs/user-guide.md) and [Host integrations](docs/integrations.md) for feature-specific setup.
-
-## Firmware updates
-
-> [!CAUTION]
-> Firmware installation is experimental. Keep the mouse directly connected, keep the computer powered, and save the preparation backup before starting. Do not disconnect the mouse after transfer begins.
-
-The native Linux updater successfully completed an official 5.04 to 5.09 MC7 upgrade. Downgrades, same-version reinstalls, interrupted-update recovery, transmitter flashing and macOS firmware installation have not been validated. Windows supports firmware package download and inspection, while firmware installation is disabled. The application enables installation only for a supported current mouse upgrade path on a platform with an implemented updater.
-
-The backup stores readable settings and supported assigned macros. It is not a complete firmware image and cannot preserve custom background pixels, device-unique data or unknown settings. Keep original image files and exported presets separately.
-
-See [Firmware and recovery](docs/firmware.md) before using the updater.
-
-Turtle Beach firmware is not bundled with this project. Release artifacts may include a small provenance archive containing official URLs and checksums, but never the vendor firmware payloads.
-
-The release includes `MC7-Studio-0.1.0-corresponding-sources.tar.gz` and its checksum. That archive retains the exact pinned upstream sources and authenticated Ubuntu source packages for the native components distributed in the AppImage. The pinned Qt Base, Qt SVG, PySide6/Shiboken6, HIDAPI, PyInstaller and 7-Zip sources also cover those components in the Windows and macOS bundles. Its `SOURCES.json` file maps every retained source file to a SHA-256 digest, while the AppImage's adjacent `.components.json` file identifies the binary payload.
-
-## Command line
-
-The graphical interface is the primary application. The AppImage accepts the same diagnostic commands after its filename, for example `~/Applications/MC7-Studio-0.1.0-x86_64.AppImage doctor`. Wheel and source installations also provide these commands:
+Linux uses the same pinned Docker build locally and in GitHub Actions:
 
 ```sh
-swarm2 --version
-swarm2 doctor
-swarm2 devices
-swarm2 read --profile 1
+scripts/build_appimage_docker.sh
 ```
 
-Add `--json` to `doctor`, `devices` or `read` for machine-readable output. Run `swarm2 --help` for all options.
-
-## Known limitations
-
-- macOS and Windows hardware acceptance is still pending.
-- Windows firmware installation, per-application audio volume and desktop media playback-state control are unavailable.
-- Start-at-login setup is currently available on Linux and macOS only.
-- Receiver, wireless and Bluetooth configuration are unavailable.
-- Automatic profiles are unavailable on KDE Plasma and unsupported Wayland compositors.
-- Direct Studio Mode changes made inside OBS may leave its mouse icon stale; restart the LCD action listener to refresh it.
-- Custom LCD image pixels cannot be read back from the mouse.
-- Firmware recovery, downgrade and transmitter installation are unavailable.
-
-For common setup and connection problems, see [Troubleshooting](docs/troubleshooting.md).
-
-## Local data and privacy
-
-Presets, automatic-profile rules and host choices are stored for the current user. Automatic-profile monitoring uses the foreground application's process identity and does not retain a window-history log. OBS integration connects only to the local OBS WebSocket server and does not keep a separate copy of its password.
+Native Windows and macOS packages are built on their respective platforms with `scripts/build_windows.py` and `scripts/build_macos.py`. The release workflow runs unit tests, package verification and graphical startup checks before assembling a draft. AppImage startup is also checked on Ubuntu, Fedora and Arch Linux.
 
 ## License
 
-MC7 Studio's original source code is Copyright © 2026 Gabriel Max and released under the [GNU General Public License version 3 or later](LICENSE). Turtle Beach names, firmware, installers and other vendor material remain the property of their respective owners and are not covered by this license.
+MC7 Studio's original source code is Copyright © 2026 Gabriel Max and released under the [GNU General Public License version 3 or later](LICENSE). Bundled components retain their own licenses and notices. Release assets include checksums and corresponding sources for the bundled copyleft components. Turtle Beach firmware payloads are not redistributed; the firmware provenance archive contains public download URLs and verification metadata.

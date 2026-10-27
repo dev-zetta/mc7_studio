@@ -44,6 +44,7 @@ from ..lcd_commands import (
 from ..lcd_layout import move_page
 from ..runtime import helper_command
 from ..sensor_commands import SCREEN_BRIGHTNESS_LEVELS, SCREEN_TIMEOUT_VALUES
+from ..settings import REQUIRED
 from .widgets import STYLE, ColorButton, MouseIllustration, SpinBox as QSpinBox, card, label
 from .recording import RecordingDialog
 from .background import BackgroundDialog
@@ -3448,8 +3449,14 @@ class MainWindow(QMainWindow):
             "This per-profile value is stored as minutes. The physical meaning "
             "of the vendor's 0-minute value still needs a timed device test."
         )
-        self._check(form, "ECO mode", "power", "eco_mode")
-        self._check(form, "Energy saving", "power", "energy_saving")
+        self.eco_mode_control = self._check(form, "ECO mode", "power", "eco_mode")
+        self.energy_saving_control = self._check(form, "Energy saving", "power", "energy_saving")
+        self.power_mode_note = label(
+            "On 2.4 GHz, choose ECO mode or energy saving. Enabling both disconnects wireless configuration. Use USB to combine them.",
+            "notice", True)
+        page.addWidget(self.power_mode_note)
+        for control in (self.eco_mode_control, self.energy_saving_control):
+            control.toggled.connect(lambda _checked: self._update_capabilities())
         page.addWidget(label("Open Firmware to download, prepare and install mouse firmware. Updates that require a settings reset explain it before installation.", "notice", True))
         page.addStretch()
 
@@ -4004,6 +4011,9 @@ class MainWindow(QMainWindow):
     def _update_capabilities(self):
         device = next((item for item in self.devices if item["id"] == self.selected_device_id), None)
         capabilities = device.get("capabilities", []) if device else []
+        wireless = bool(device and device.get("product_id") == 0x502E)
+        power_conflict = wireless and self.draft.power.eco_mode and self.draft.power.energy_saving
+        self.power_mode_note.setVisible(wireless)
         busy = self._device_or_dialog_busy()
         self.firmware_button.setEnabled(not busy)
         self.restore_button.setEnabled(not busy)
@@ -4029,11 +4039,21 @@ class MainWindow(QMainWindow):
         self.read_button.setToolTip("Load supported settings from the selected mouse profile into this local draft.")
         section = PAGE_SECTIONS.get(self.navigation.currentRow())
         can_apply = not busy and section is not None and f"apply_{section}" in capabilities and matching_read
+        missing_read = bool(self.snapshot and any(
+            name in self.snapshot.get("errors", {}) for name in REQUIRED.get(section, ())))
+        if missing_read:
+            can_apply = False
+        if section == "power" and power_conflict:
+            can_apply = False
         if section in ("buttons", "display") and self._macro_merge_warning:
             can_apply = False
         self.apply_button.setText(f"Apply {SECTION_LABELS[section]}" if section else "Apply to mouse")
         self.apply_button.setEnabled(can_apply)
         self.apply_button.setToolTip(f"Apply this page's supported {SECTION_LABELS[section]} to the mouse." if can_apply else "Choose a settings page and read this mouse profile before applying.")
+        if missing_read:
+            self.apply_button.setToolTip("Required settings could not be read. Read again or connect the mouse directly by USB before applying this page.")
+        if section == "power" and power_conflict:
+            self.apply_button.setToolTip("Choose ECO mode or energy saving for this wireless connection, or connect directly by USB.")
         self.device_selector.setEnabled(not busy)
         can_read_status = "read_status" in capabilities and callable(getattr(self.service, "read_status", None))
         self.status_read_button.setEnabled(not busy and can_read_status)
@@ -4134,7 +4154,7 @@ class MainWindow(QMainWindow):
         self.device_selector.blockSignals(False)
         self._select_device()
         if not self.devices:
-            self._notify("No MC7 was found. Connect the mouse by USB, then refresh devices. You can keep editing local presets.")
+            self._notify("No MC7 was found. Connect the mouse by USB, or its 2.4 GHz receiver on Linux, then refresh devices. You can keep editing local presets.")
 
     def _select_device(self, *_):
         selected = self.device_selector.currentData()
@@ -4154,7 +4174,9 @@ class MainWindow(QMainWindow):
         device = next((item for item in self.devices if item["id"] == selected), None)
         if device:
             self.connection_badge.setText("●  MC7 connected")
-            self.overview_connection.setText("USB device connected")
+            self.overview_connection.setText(
+                "2.4 GHz wireless receiver connected" if device.get("product_id") == 0x502E
+                else "USB mouse connected")
             detail = device.get("detail", "")
             availability = "Read mouse to retrieve the supported settings." if any(key in device.get("capabilities", []) for key in ("read_settings", "read_sensor")) else "Settings access is unavailable for this connection."
             self.device_summary.setText("\n\n".join(part for part in (device["label"], detail, availability) if part))

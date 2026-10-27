@@ -2,7 +2,17 @@
 
 MC7 Studio configures a Turtle Beach Command Series MC7 from Linux, macOS or Windows. It manages the mouse's five profile slots, sensor settings, buttons, lighting, touch display, macros and power preferences. It also provides optional desktop features that run while MC7 Studio is open.
 
-Use a direct USB connection when changing mouse settings. Configuration through the wireless transmitter is not supported.
+On Linux, connect the mouse directly by USB or use its 2.4 GHz receiver. macOS and Windows currently require a direct USB connection.
+
+## Linux 2.4 GHz wireless
+
+Starting with 0.2, connect the receiver, switch the mouse to 2.4 GHz mode, wake the mouse and choose **Device → Refresh devices**. Select **Command Series MC7 · 2.4 GHz wireless**, then choose **Read mouse**. The existing udev rule already covers the receiver's HID interfaces.
+
+Use the same page controls and Apply buttons as with a USB connection. The application waits for fresh receiver replies, reads lighting repeatedly to verify the receiver's record format and reads settings back after an update. If a page's required settings cannot be read, its Apply button stays disabled. A sleeping mouse may time out; wake it and read again before retrying.
+
+Choose **ECO mode or energy saving**, one at a time. On the tested mouse firmware 5.09 and receiver firmware 5.02, enabling both disconnects configuration access even though pointer input still works. Apply is disabled until you choose one mode, and the backend rejects conflicting requests before any HID report is sent. You can combine them through a direct USB connection.
+
+Wireless hardware validation is less complete than wired validation. Custom calibration, image transfers, long-running LCD services and 8 kHz behavior have not completed wireless acceptance; use USB for those workflows. Firmware access, pairing and Bluetooth configuration are unavailable through the receiver. Use a direct USB connection for firmware workflows.
 
 ## Mouse settings and local data
 
@@ -17,7 +27,7 @@ A local preset is a reusable editing copy. **Save preset** does not write to the
 
 ## First start
 
-1. Connect the mouse directly to the computer with a USB cable.
+1. Connect the mouse directly with a USB cable, or connect its 2.4 GHz receiver on Linux and wake the mouse in that mode.
 2. Start the AppImage, run `swarm2-gui`, or run `swarm2 gui`.
 3. Open **Device** and choose **Refresh devices** if the mouse is not selected.
 4. On Linux, open **Check and install host integration…**. Check the **MC7 USB access** section and install or update the udev rule if requested. Administrator authentication is required for this one action. Reconnect the mouse and receiver afterward, then refresh devices again.
@@ -145,7 +155,7 @@ Follow the message in the window and read the mouse again before retrying. If a 
 
 ## Current limitations
 
-- Mouse configuration through the wireless transmitter is unavailable.
+- Linux 2.4 GHz configuration is supported in 0.2. Wireless hardware validation is less complete than wired validation, especially for custom calibration, image transfers, long-running LCD services and 8 kHz behavior. macOS and Windows require a direct USB connection.
 - Transmitter firmware installation, pairing, standalone factory reset and interrupted-update recovery are unavailable.
 - KDE Plasma and Wayland compositors other than GNOME, Sway and Hyprland do not provide automatic foreground-profile switching.
 - macOS and Windows support are implemented, but physical MC7 validation is less complete than Linux validation.

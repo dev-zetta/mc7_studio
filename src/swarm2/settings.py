@@ -1,11 +1,14 @@
 """State-preserving MC7 setting transactions, executed in the USB helper."""
 
+from contextlib import nullcontext
+
 from .button_commands import (BUTTON_SLOTS, build_button_report, decode_action,
                               decode_button_response)
 from .configuration import Configuration
 from .display_commands import build_application_report, decode_profile_response
 from .lighting_commands import (brightness_from_percent, build_lighting_report,
-                                decode_lighting_response, expected_lighting_state)
+                                decode_lighting_response, expected_lighting_state,
+                                RECEIVER_LIGHTING_FORMAT)
 from .lcd_commands import LCD_WIDGETS, build_lcd_report, decode_lcd_response
 from .screen_key_commands import (
     build_screen_key_read_request, build_screen_key_reports,
@@ -28,6 +31,11 @@ SELECTORS = {"sensor": 0x10, "profile": 0x12, "lighting": 0x2A, "primary": 0x15,
 PER_PROFILE = {"sensor", "lighting", "primary", "easy_shift", "lcd", "screen_keys"}
 
 
+def _check_wireless_power_modes(configuration, wireless):
+    if wireless and configuration.power.eco_mode and configuration.power.energy_saving:
+        raise DeviceError("Choose ECO mode or energy saving for 2.4 GHz. Enabling both disconnects wireless configuration; use USB to combine them.")
+
+
 def read_raw(transport, name, profile):
     selector = SELECTORS[name]
     if name == "screen_keys":
@@ -41,13 +49,14 @@ def read_raw(transport, name, profile):
     return transport.get_feature(selector)
 
 
-def decode(name, raw, profile):
+def decode(name, raw, profile, *, lighting_format=None):
     if name == "sensor":
         return decode_advanced_sensor_response(raw, profile)
     if name in ("primary", "easy_shift"):
         return decode_button_response(raw, profile, name)
     if name == "lighting":
-        return decode_lighting_response(raw, profile)
+        return decode_lighting_response(raw, profile,
+            receiver_prefix=lighting_format == RECEIVER_LIGHTING_FORMAT)
     if name == "lcd":
         return decode_lcd_response(raw, profile)
     if name == "screen_keys":
@@ -61,7 +70,7 @@ def decode(name, raw, profile):
             "debounce": decode_debounce_response, "eco": decode_eco_response}[name](raw)
 
 
-def stable(name, raw):
+def stable(name, raw, *, lighting_format=None):
     """Compare known setting fields, excluding device-generated checksums."""
     if name in ("primary", "easy_shift"):
         return raw[:52]
@@ -72,6 +81,8 @@ def stable(name, raw):
     if name == "background":
         # Only the selection byte is classified; no trailer checksum is known.
         return decode_background_selection_response(raw).background_index
+    if name == "lighting" and lighting_format == RECEIVER_LIGHTING_FORMAT:
+        return raw  # Every byte is setting data; the blue channel is not a checksum.
     if name == "profile":
         state = decode_profile_response(raw)
         # This firmware expands the outgoing energy bit to a 0xF0 read nibble.
@@ -102,11 +113,31 @@ def lcd_edits(state, pages):
 
 def read_bundle(transport, profile):
     settings, errors = {}, {}
+    wireless = getattr(transport, "wireless", False)
+    status, lighting_format = None, None
+    if wireless:
+        try:
+            status = decode_status_response(read_raw(transport, "status", 0))
+            settings["status"] = status.raw.hex()
+        except (ValueError, OSError, DeviceError) as error:
+            errors["status"] = str(error)
     for name in SELECTORS:
+        if name == "status" and wireless:
+            continue
         try:
             raw = read_raw(transport, name, profile)
-            state = decode(name, raw, profile)
+            selected_format = None
+            if (name == "lighting" and wireless and status is not None
+                    and status.firmware_numeric == 509 and len(raw) == 12):
+                # Verified against all five checksum-bearing USB records. Keep
+                # the actual receiver bytes and require two independent reads.
+                if read_raw(transport, name, profile) != raw:
+                    raise DeviceError("Wireless lighting reads did not agree; read the mouse again")
+                selected_format = RECEIVER_LIGHTING_FORMAT
+            state = decode(name, raw, profile, lighting_format=selected_format)
             settings[name] = state.raw.hex()
+            if selected_format is not None:
+                lighting_format = selected_format
         except (ValueError, OSError, DeviceError) as error:
             if name == "sensor":
                 raise
@@ -137,13 +168,19 @@ def read_bundle(transport, profile):
                     macro_data[key] = read_macro(transport, profile, logical, "lcd").hex()
                 except (OSError, ValueError, DeviceError) as error:
                     errors[f"macro/{key}"] = str(error)
-    return {"raw": settings["sensor"], "settings": settings, "errors": errors,
-            "macro_data": macro_data, "changed": False}
+    result = {"raw": settings["sensor"], "settings": settings, "errors": errors,
+              "macro_data": macro_data, "changed": False}
+    if lighting_format is not None:
+        result["lighting_format"] = lighting_format
+    return result
 
 
 def _plan(section, configuration, raw, profile, *, macro_plans=None, force_layers=(),
-          force_lcd=False, host_action_icon_indices=None):
+          force_lcd=False, host_action_icon_indices=None, wireless=False,
+          lighting_format=None):
     """Return commands and predicted responses; never send while validating."""
+    if section == "power":
+        _check_wireless_power_modes(configuration, wireless)
     # Battery/charging telemetry may change independently during any update.
     expected = {name: bytearray(value) for name, value in raw.items() if name != "status"}
     commands = []
@@ -168,7 +205,8 @@ def _plan(section, configuration, raw, profile, *, macro_plans=None, force_layer
                 target[11+7*i:13+7*i] = (stage.value//50-1).to_bytes(2, "little")
                 target[13+7*i:16+7*i] = bytes(colors[i])
                 target[16+7*i] = int(sensor.dpi_indicator_enabled)
-        if (sensor.polling_rate, sensor.motion_sync) != (state.polling_rate_usb, state.motion_sync):
+        rate = state.polling_rate_wireless if wireless else state.polling_rate_usb
+        if (sensor.polling_rate, sensor.motion_sync) != (rate, state.motion_sync):
             add(build_polling_report(profile_index=profile, polling_rate=sensor.polling_rate, motion_sync=sensor.motion_sync))
             target[4] = target[5] = POLLING_RATES.index(sensor.polling_rate)
             target[46] = int(sensor.motion_sync)
@@ -185,7 +223,7 @@ def _plan(section, configuration, raw, profile, *, macro_plans=None, force_layer
             add(build_debounce_report(debounce_ms=sensor.debounce_ms))
             expected["debounce"][3:5] = bytes((sensor.debounce_ms, sensor.debounce_ms))
     elif section == "lighting":
-        state = decode_lighting_response(raw["lighting"], profile)
+        state = decode("lighting", raw["lighting"], profile, lighting_format=lighting_format)
         if state.effect is None or not 1 <= state.speed <= 10:
             raise DeviceError("Unknown device lighting effect or speed; existing settings have been preserved")
         lighting = configuration.lighting
@@ -308,7 +346,7 @@ def _plan(section, configuration, raw, profile, *, macro_plans=None, force_layer
                 expected["lcd"] = prediction
     elif section == "power":
         power = configuration.power
-        lighting = decode_lighting_response(raw["lighting"], profile)
+        lighting = decode("lighting", raw["lighting"], profile, lighting_format=lighting_format)
         # Unsupported device values are preserved. The configuration snapshot
         # deliberately leaves its safe default in place when it cannot express
         # the raw value, so an unrelated power edit must not overwrite it.
@@ -339,6 +377,15 @@ REQUIRED = {"sensor": ("sensor", "debounce"), "lighting": ("lighting",),
 
 
 def transact_settings(request, transport):
+    if request.get("operation") == "apply_settings" and request.get("section") == "power":
+        _check_wireless_power_modes(Configuration.from_dict(request["configuration"]),
+                                    getattr(transport, "wireless", False))
+    session = getattr(transport, "configuration_session", nullcontext)
+    with session():
+        return _transact_settings(request, transport)
+
+
+def _transact_settings(request, transport):
     slot = request["profile_slot"]
     if type(slot) is not int or not 1 <= slot <= 5:
         raise DeviceError("Profile slot must be 1..5")
@@ -413,6 +460,7 @@ def transact_settings(request, transport):
             if (baseline.get("device_id"), baseline.get("profile_slot"), baseline.get("transport_identity")) != (request["device_id"], slot, identity):
                 raise DeviceError("Read this mouse/profile before applying settings")
             raw = {name: bytes.fromhex(value) for name, value in result["settings"].items()}
+            lighting_format = result.get("lighting_format")
             required = REQUIRED[section] + (("lcd", "screen_keys")
                 if section == "display" and request.get("configuration", {}).get("display", {}).get("pages") else ())
             if section == "display" and request.get("configuration", {}).get("display", {}).get("background_index") is not None:
@@ -421,7 +469,9 @@ def transact_settings(request, transport):
                 previous = baseline.get("settings", {}).get(name)
                 if name not in raw or not previous:
                     raise DeviceError(f"Read the {name} settings successfully before applying")
-                if stable(name, bytes.fromhex(previous)) != stable(name, raw[name]):
+                if name == "lighting" and baseline.get("lighting_format") != lighting_format:
+                    raise DeviceError("The lighting response format changed; read this mouse again before applying")
+                if stable(name, bytes.fromhex(previous), lighting_format=lighting_format) != stable(name, raw[name], lighting_format=lighting_format):
                     raise DeviceError(f"The {name} settings changed since the last read. Read again before applying.")
             config = Configuration.from_dict(request["configuration"])
             if config.profile_slot != slot:
@@ -468,12 +518,14 @@ def transact_settings(request, transport):
                             "host_action_icon_indices", []),
                     )
             commands, expected = _plan(section, config, raw, profile,
+                                      wireless=getattr(transport, "wireless", False),
+                                      lighting_format=lighting_format,
                                       macro_plans=macro_plans, force_layers=disabling,
                                       force_lcd="lcd" in disabling,
                                       host_action_icon_indices=(
                                           custom_icon_plan.icon_indices
                                           if custom_icon_plan is not None else None))
-            predictions = {name: stable(name, bytes(value)) for name, value in expected.items()}
+            predictions = {name: stable(name, bytes(value), lighting_format=lighting_format) for name, value in expected.items()}
             custom_icon_uploads = ()
             if (commands or macro_updates or
                     (custom_icon_plan is not None and custom_icon_plan.uploads)):
@@ -490,7 +542,7 @@ def transact_settings(request, transport):
                     after = read_bundle(transport, profile)
                     for name, prediction in predictions.items():
                         observed = after["settings"].get(name)
-                        if not observed or stable(name, bytes.fromhex(observed)) != prediction:
+                        if not observed or stable(name, bytes.fromhex(observed), lighting_format=after.get("lighting_format")) != prediction:
                             raise DeviceError(f"The {name} readback does not match the planned update")
                     for (layer, logical), plan in macro_plans.items():
                         observed = after.get("macro_data", {}).get(f"{layer}:{logical}")

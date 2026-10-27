@@ -55,6 +55,7 @@ def markdown_layout_errors(text):
     errors = []
     previous = None
     fence = None
+    frontmatter = text.startswith("---\n")
     fence_pattern = re.compile(r"^\s*(`{3,}|~{3,})")
     list_pattern = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
     heading_pattern = re.compile(r"^\s{0,3}#{1,6}(?:\s|$)")
@@ -64,6 +65,10 @@ def markdown_layout_errors(text):
     )
 
     for number, line in enumerate(text.splitlines(), 1):
+        if frontmatter:
+            if number > 1 and line.strip() == "---":
+                frontmatter = False
+            continue
         fence_match = fence_pattern.match(line)
         if fence is not None:
             if fence_match and fence_match.group(1).startswith(fence):
@@ -112,6 +117,8 @@ def markdown_layout_errors(text):
 
     if fence is not None:
         errors.append("unclosed fenced code block")
+    if frontmatter:
+        errors.append("unclosed YAML front matter")
     return errors
 
 

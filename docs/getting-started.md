@@ -1,12 +1,12 @@
 # Getting started
 
-MC7 Studio configures the Turtle Beach Command Series MC7 on Linux, macOS and Windows. Connect the mouse directly by USB for setup. The wireless receiver can be detected, but wireless and Bluetooth configuration are not available yet.
+MC7 Studio configures the Turtle Beach Command Series MC7 on Linux, macOS and Windows. Connect the mouse directly by USB, or use its 2.4 GHz receiver on Linux with version 0.2 or newer. See [wireless configuration](user-guide.md#linux-24-ghz-wireless) for setup and limits. Bluetooth configuration is unavailable.
 
 For an overview of the application, see the [project README](../README.md).
 
 ## Requirements
 
-- A Turtle Beach Command Series MC7 connected directly by USB.
+- A Turtle Beach Command Series MC7 connected directly by USB, or its 2.4 GHz receiver on Linux.
 - For the preferred AppImage: an x86_64 Linux system with glibc 2.35 or newer. The AppImage is built on Ubuntu 22.04 and can run on other glibc-based distributions, including Fedora and Arch-derived systems, when they meet that baseline.
 - For the portable Windows application: 64-bit Windows 10 or newer.
 - For the Apple Silicon application: an M1 or newer Mac running macOS 13 or newer.
@@ -24,11 +24,11 @@ The AppImage does not need Python or a virtual environment. Installing a wheel o
 Download the AppImage and its `.sha256` file from the release. Verify the download, place the application where you intend to keep it, mark it executable and launch it:
 
 ```sh
-sha256sum -c MC7-Studio-0.1.0-x86_64.AppImage.sha256
+sha256sum -c MC7-Studio-0.2.0-x86_64.AppImage.sha256
 mkdir -p "$HOME/Applications"
-mv MC7-Studio-0.1.0-x86_64.AppImage "$HOME/Applications/"
-chmod +x "$HOME/Applications/MC7-Studio-0.1.0-x86_64.AppImage"
-"$HOME/Applications/MC7-Studio-0.1.0-x86_64.AppImage"
+mv MC7-Studio-0.2.0-x86_64.AppImage "$HOME/Applications/"
+chmod +x "$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
+"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage"
 ```
 
 Do not run the AppImage as root. It keeps presets and other user data in the normal per-user locations rather than inside the AppImage.
@@ -38,8 +38,8 @@ Do not run the AppImage as root. It keeps presets and other user data in the nor
 Download the Windows ZIP and adjacent checksum from the release. Verify the SHA-256 value with `Get-FileHash`, extract the entire archive, and launch `MC7-Studio.exe`:
 
 ```powershell
-Get-FileHash .\MC7-Studio-0.1.0-windows-x86_64.zip -Algorithm SHA256
-Expand-Archive .\MC7-Studio-0.1.0-windows-x86_64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
+Get-FileHash .\MC7-Studio-0.2.0-windows-x86_64.zip -Algorithm SHA256
+Expand-Archive .\MC7-Studio-0.2.0-windows-x86_64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
 & "$env:LOCALAPPDATA\Programs\MC7-Studio\MC7-Studio.exe"
 ```
 
@@ -47,10 +47,10 @@ Close Swarm II before using MC7 Studio. No udev rule or separate USB driver is r
 
 ### macOS Apple Silicon application
 
-Download `MC7-Studio-0.1.0-macos-arm64.zip` and its checksum from [GitHub Releases](https://github.com/dev-zetta/swarm2/releases/latest). Verify the archive before opening it:
+Download `MC7-Studio-0.2.0-macos-arm64.zip` and its checksum from [GitHub Releases](https://github.com/dev-zetta/mc7_studio/releases/latest). Verify the archive before opening it:
 
 ```sh
-shasum -a 256 -c MC7-Studio-0.1.0-macos-arm64.zip.sha256
+shasum -a 256 -c MC7-Studio-0.2.0-macos-arm64.zip.sha256
 ```
 
 Extract the archive in Finder and move **MC7 Studio.app** to **Applications**. Open it there, connect one MC7 directly by USB, and choose **Refresh devices**. The bundle includes its Python runtime, Qt, HIDAPI and 7-Zip; Homebrew is not needed.
@@ -63,7 +63,7 @@ Download the wheel from the release and replace the example path below with its 
 
 ```sh
 python3 -m venv mc7-studio
-mc7-studio/bin/python -m pip install '/path/to/swarm2_mc7-0.1.0-py3-none-any.whl[gui]'
+mc7-studio/bin/python -m pip install '/path/to/swarm2_mc7-0.2.0-py3-none-any.whl[gui]'
 mc7-studio/bin/swarm2-gui
 ```
 
@@ -76,8 +76,8 @@ Apple Silicon Mac and Windows users should normally use their platform's portabl
 The source archive contains the same application and is useful when a wheel cannot be installed directly:
 
 ```sh
-tar -xzf swarm2_mc7-0.1.0.tar.gz
-cd swarm2_mc7-0.1.0
+tar -xzf swarm2_mc7-0.2.0.tar.gz
+cd swarm2_mc7-0.2.0
 python3 -m venv .venv
 .venv/bin/python -m pip install '.[gui]'
 .venv/bin/swarm2-gui
@@ -105,7 +105,7 @@ If the in-app installer is unavailable, see the manual procedure in [Troubleshoo
 Run the read-only diagnostic with the same AppImage used to open the application:
 
 ```sh
-"$HOME/Applications/MC7-Studio-0.1.0-x86_64.AppImage" doctor
+"$HOME/Applications/MC7-Studio-0.2.0-x86_64.AppImage" doctor
 ```
 
 For a wheel installation, run it from the same virtual environment:
@@ -126,7 +126,7 @@ The start-at-login entry records the AppImage's absolute path. Move the file to 
 
 MC7 Studio separates the local draft from settings stored on the mouse. Follow this sequence so the app can preserve settings it does not edit:
 
-1. Open **Device**, select the directly connected MC7, and use **Refresh devices** if it is not listed.
+1. Open **Device**, select the USB mouse or Linux 2.4 GHz receiver, and use **Refresh devices** if it is not listed.
 2. Open **Profiles** and select the onboard slot you want to edit.
 3. Choose **Read mouse**. Wait for the read to finish before editing.
 4. Change settings on **Sensitivity**, **Buttons**, **Lighting**, **Display** or **Device**.

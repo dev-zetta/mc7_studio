@@ -28,6 +28,32 @@ def extended_response(*, profile=0, enabled=1, led_timeout=0x0F, brightness=255,
 
 
 class LightingCommandsTests(unittest.TestCase):
+    def test_receiver_prefix_preserves_all_setting_bytes_without_fabricating_checksum(self):
+        raw = FW509_LIGHTING[:-1]
+        with self.assertRaisesRegex(ProtocolError, 'checksum'):
+            decode_lighting_response(raw, 0)
+        state = decode_lighting_response(raw, 0, receiver_prefix=True)
+        self.assertEqual(state.raw, raw)
+        self.assertTrue(state.receiver_prefix)
+        self.assertEqual(state.signature, decode_lighting_response(FW509_LIGHTING, 0).signature)
+        packet = build_lighting_report(state, brightness_raw=254, color=(18, 52, 86))
+        predicted = expected_lighting_state(packet, state)
+        self.assertEqual(predicted.raw.hex(), '102a0000010ffe0505123456')
+        self.assertEqual(predicted.color, (18, 52, 86))
+        self.assertEqual(len(predicted.raw), 12)
+        self.assertEqual(packet[12:], bytes(52))
+
+    def test_receiver_prefix_rejects_wrong_identity_size_status_and_enable(self):
+        prefix = FW509_LIGHTING[:-1]
+        cases = [prefix[:-1], FW509_LIGHTING, prefix + bytes(52)]
+        for offset, value in ((0, 0), (1, 0x29), (2, 1), (3, 4), (4, 2)):
+            raw = bytearray(prefix)
+            raw[offset] = value
+            cases.append(bytes(raw))
+        for raw in cases:
+            with self.subTest(raw=raw), self.assertRaises(ProtocolError):
+                decode_lighting_response(raw, 0, receiver_prefix=True)
+
     def test_live_compact_response_decodes_without_using_checksum_as_blue(self):
         state = decode_lighting_response(LIVE_LIGHTING, 0)
         self.assertEqual(state.raw, LIVE_LIGHTING)

@@ -3,9 +3,9 @@
 Start with the read-only diagnostic. It reports device discovery and access without opening the mouse or changing its settings:
 
 ```sh
-~/Applications/MC7-Studio-0.1.0-x86_64.AppImage --version
-~/Applications/MC7-Studio-0.1.0-x86_64.AppImage doctor
-~/Applications/MC7-Studio-0.1.0-x86_64.AppImage devices
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage --version
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage doctor
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage devices
 ```
 
 For a wheel or source installation, use the installed commands:
@@ -25,14 +25,14 @@ The release AppImage supports x86_64 Linux systems with glibc 2.35 or newer. It 
 Make sure the download is executable and stored on a filesystem that permits programs to run:
 
 ```sh
-chmod +x MC7-Studio-0.1.0-x86_64.AppImage
-./MC7-Studio-0.1.0-x86_64.AppImage
+chmod +x MC7-Studio-0.2.0-x86_64.AppImage
+./MC7-Studio-0.2.0-x86_64.AppImage
 ```
 
 If it is on a filesystem mounted with `noexec`, move it to a local directory such as `~/Applications` and try again. If the error mentions FUSE or `libfuse.so.2`, use the AppImage runtime's extraction fallback:
 
 ```sh
-./MC7-Studio-0.1.0-x86_64.AppImage --appimage-extract-and-run
+./MC7-Studio-0.2.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 The AppImage includes Python, the GUI dependencies, `7zz`, `libusb` and its HTTPS certificate trust store. A missing one of those components in a current AppImage is a packaging problem; record the terminal output and report it with the AppImage checksum.
@@ -45,7 +45,7 @@ Make sure the wheel command ends in `[gui]`. Installing the wheel without that e
 
 ## The mouse is not listed
 
-1. Connect the mouse itself directly by USB. Connecting only the wireless receiver is not sufficient for configuration.
+1. Connect the mouse itself directly by USB. On Linux with 0.2 or newer, you can instead connect the 2.4 GHz receiver, switch the mouse to that mode and wake it before refreshing devices.
 2. Disconnect and reconnect the cable, then choose **Device → Refresh devices**.
 3. Try another data-capable USB cable or port.
 4. Close other MC7 Studio instances and any vendor software running through Wine, then refresh again.
@@ -54,12 +54,16 @@ Make sure the wheel command ends in `[gui]`. Installing the wheel without that e
 On macOS, connect exactly one MC7 mouse directly. If the diagnostic reports that HIDAPI is unavailable, reinstall the GUI extra from the release wheel:
 
 ```sh
-mc7-studio/bin/python -m pip install --force-reinstall '/path/to/swarm2_mc7-0.1.0-py3-none-any.whl[gui]'
+mc7-studio/bin/python -m pip install --force-reinstall '/path/to/swarm2_mc7-0.2.0-py3-none-any.whl[gui]'
 ```
 
 macOS USB support is experimental and has not yet completed physical hardware acceptance.
 
 On Windows, close Swarm II and any other mouse utility, connect exactly one MC7 directly, and refresh devices. The portable build needs no custom driver. If the wheel diagnostic reports that HIDAPI is unavailable, reinstall the `[gui]` extra in the same virtual environment. Windows USB support is experimental and has not yet completed physical hardware acceptance.
+
+If a wireless read reports an acknowledgement timeout, move or click the mouse, confirm the pointer responds in 2.4 GHz mode, then read again. If a settings page still cannot be read, check its settings through a direct USB connection and include both results in a bug report. MC7 Studio keeps Apply disabled when the page's required settings cannot be validated. Wireless firmware installation is unavailable.
+
+If both **ECO mode** and **energy saving** were enabled previously, connect the mouse by USB, read it, disable one of those modes and apply Power. Then unplug the cable and read through the receiver again. The tested firmware combination loses wireless configuration access with both modes enabled; moving the mouse does not reliably recover it. MC7 Studio 0.2 prevents new wireless requests for that combination.
 
 ## The mouse is listed but cannot be read or changed on Linux
 
@@ -151,7 +155,7 @@ Only the supported current mouse upgrade path is enabled. Historical reinstallat
 Launch the AppImage from a terminal so the startup error remains visible:
 
 ```sh
-~/Applications/MC7-Studio-0.1.0-x86_64.AppImage
+~/Applications/MC7-Studio-0.2.0-x86_64.AppImage
 ```
 
 For a wheel installation, launch its GUI command from a terminal:
